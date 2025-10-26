@@ -10,10 +10,12 @@ python-dotenv==1.0.1
 sqlalchemy==2.0.35
 alembic==1.13.3
 aiosqlite==0.20.0
+greenlet==3.1.1
 
 # Validation
 pydantic==2.9.2
 pydantic-settings==2.6.0
+email-validator==2.2.0
 
 # Security
 python-jose[cryptography]==3.3.0

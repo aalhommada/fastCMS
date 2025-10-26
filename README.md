@@ -2,7 +2,7 @@
 
 **The AI-Native Backend-as-a-Service**
 
-FastCMS is an open-source, self-hosted backend alternative to PocketBase, built with FastAPI and enhanced with AI superpowers. It combines the simplicity of traditional BaaS platforms with intelligent automation powered by LangChain and LangGraph.
+FastCMS is an open-source, self-hosted backend, built with FastAPI and enhanced with AI superpowers. It combines the simplicity of traditional BaaS platforms with intelligent automation powered by LangChain and LangGraph.
 
 ## ✨ Features
 
@@ -34,47 +34,67 @@ FastCMS is the **first FastAPI backend with native AI agents**:
 ### Prerequisites
 
 - Python 3.11+
-- uv (recommended) or pip
 
 ### Installation
 
-```bash
-# Clone the repository
+#### Windows (Easiest Method)
+
+```powershell
+# 1. Clone the repository
 git clone https://github.com/yourusername/fastCMS.git
 cd fastCMS
 
-# Install uv (if not already installed)
-# On Windows:
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-# On macOS/Linux:
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install dependencies with uv (fastest!)
-uv pip install -e .
-
-# Or with pip
-pip install -r requirements.txt
-
-# Copy environment file
-cp .env.example .env
-
-# Edit .env and set your SECRET_KEY
-# Generate with: openssl rand -hex 32
-
-# Run database migrations
-uv run alembic upgrade head
-
-# Start the development server
-uv run uvicorn app.main:app --reload
-
-# Or run directly
-python app/main.py
+# 2. Run the automated setup and start script
+.\fix_and_run.bat
 ```
 
-The API will be available at `http://localhost:8000`
+That's it! The script will:
 
-- API Documentation: `http://localhost:8000/docs`
-- Admin Dashboard: `http://localhost:8000/admin` (coming soon)
+- Create a virtual environment
+- Install all dependencies
+- Run database migrations
+- Start the server
+
+#### Manual Setup (All Platforms)
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/aalhommada/fastCMS.git
+cd fastCMS
+
+# 2. Create virtual environment
+python -m venv .venv
+
+# 3. Activate virtual environment
+# Windows:
+.venv\Scripts\activate.bat
+# macOS/Linux:
+source .venv/bin/activate
+
+# 4. Install dependencies
+pip install -r requirements.txt
+
+# 5. Copy environment file
+cp .env.example .env
+# Edit .env and set your SECRET_KEY (generate with: openssl rand -hex 32)
+
+# 6. Run database migrations
+alembic upgrade head
+
+# 7. Start the development server
+python app/main.py
+# Or with auto-reload:
+uvicorn app.main:app --reload
+```
+
+### Access Points
+
+Once the server is running:
+
+- **API Documentation (Swagger):** http://localhost:8000/docs
+- **Alternative Docs (ReDoc):** http://localhost:8000/redoc
+- **Health Check:** http://localhost:8000/health
+- **Admin Dashboard:** http://localhost:8000/admin (coming in Phase 7)
 
 ## 📦 Tech Stack
 
@@ -114,17 +134,75 @@ fastCMS/
 - [AI Features Guide](docs/ai-features.md) (coming soon)
 - [Deployment Guide](docs/deployment.md) (coming soon)
 
+## 📚 API Examples
+
+### Register a User
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123!",
+    "password_confirm": "SecurePass123!",
+    "name": "John Doe"
+  }'
+```
+
+### Login
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123!"
+  }'
+```
+
+### Create a Collection
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/collections" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "posts",
+    "type": "base",
+    "schema": [
+      {
+        "name": "title",
+        "type": "text",
+        "validation": {"required": true, "min": 3, "max": 200}
+      },
+      {
+        "name": "content",
+        "type": "editor"
+      },
+      {
+        "name": "published",
+        "type": "bool"
+      }
+    ]
+  }'
+```
+
+See [test_auth.md](test_auth.md) for more detailed API examples.
+
 ## 🎯 Roadmap
 
 See [TODO.md](TODO.md) for the complete development roadmap.
 
-### Current Status: Phase 1 - Foundation ✅
+### Current Status: Phase 3 - Authentication ✅
 
-- [x] Project structure
-- [x] Configuration system
-- [x] Database setup (SQLAlchemy + Alembic)
-- [x] Logging system
-- [ ] Collections system (in progress)
+- [x] Phase 1: Project foundation
+- [x] Phase 2: Collections system (dynamic tables)
+- [x] Phase 3: Authentication (JWT, register, login, refresh tokens)
+- [ ] Phase 4: Records CRUD API (in progress)
+- [ ] Phase 5: File uploads & storage
+- [ ] Phase 6: Real-time features (SSE/WebSocket)
+- [ ] Phase 7: Admin dashboard UI
+- [ ] Phase 8: AI agents integration
 
 ## 🤝 Contributing
 
@@ -136,7 +214,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## 🙏 Acknowledgments
 
-- Inspired by [PocketBase](https://pocketbase.io/)
 - Built with [FastAPI](https://fastapi.tiangolo.com/)
 - AI powered by [LangChain](https://langchain.com/)
 

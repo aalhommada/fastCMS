@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="AI-Native Backend-as-a-Service - Open-source PocketBase alternative",
+    description="AI-Native Backend-as-a-Service - Open-source FastAPI CMS",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
     default_response_class=ORJSONResponse,  # Use orjson for performance
