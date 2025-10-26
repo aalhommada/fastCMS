@@ -1,0 +1,52 @@
+# FastCMS Dependencies
+# Generated from pyproject.toml for pip users
+
+# Core
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-dotenv==1.0.1
+
+# Database
+sqlalchemy==2.0.35
+alembic==1.13.3
+aiosqlite==0.20.0
+
+# Validation
+pydantic==2.9.2
+pydantic-settings==2.6.0
+
+# Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.17
+
+# Templates & Async
+jinja2==3.1.4
+aiofiles==24.1.0
+httpx==0.28.1
+
+# Performance
+orjson==3.10.7
+
+# Images
+pillow==11.0.0
+
+# AI (Optional - install separately if needed)
+# langchain==0.3.7
+# langchain-openai==0.2.8
+# langchain-anthropic==0.2.4
+# langgraph==0.2.45
+# faiss-cpu==1.9.0
+# sentence-transformers==3.3.1
+# tiktoken==0.8.0
+# qdrant-client==1.12.1
+# openai==1.54.5
+# langchain-community==0.3.7
+
+# Development
+pytest==8.3.3
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+black==24.10.0
+ruff==0.7.3
+mypy==1.13.0

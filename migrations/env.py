@@ -16,7 +16,7 @@ from app.core.config import settings
 from app.db.base import Base
 
 # Import all models here to ensure they're registered with Base.metadata
-# from app.db.models.collection import Collection
+from app.db.models.collection import Collection
 # from app.db.models.user import User
 
 # Alembic Config object
