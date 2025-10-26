@@ -1,0 +1,140 @@
+[tool.poetry]
+name = "fastcms"
+version = "0.1.0"
+description = "AI-Native Backend-as-a-Service - Open-source PocketBase alternative with FastAPI"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+sqlalchemy = "^2.0.35"
+alembic = "^1.13.3"
+pydantic = "^2.9.2"
+pydantic-settings = "^2.6.0"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+python-multipart = "^0.0.17"
+aiosqlite = "^0.20.0"
+jinja2 = "^3.1.4"
+httpx = "^0.28.1"
+pillow = "^11.0.0"
+python-dotenv = "^1.0.1"
+aiofiles = "^24.1.0"
+orjson = "^3.10.7"
+redis = {version = "^5.2.0", optional = true}
+
+# AI Dependencies
+langchain = "^0.3.7"
+langchain-openai = "^0.2.8"
+langchain-anthropic = "^0.2.4"
+langgraph = "^0.2.45"
+faiss-cpu = "^1.9.0"
+sentence-transformers = "^3.3.1"
+tiktoken = "^0.8.0"
+qdrant-client = "^1.12.1"
+openai = "^1.54.5"
+langchain-community = "^0.3.7"
+ollama = {version = "^0.4.2", optional = true}
+langchain-ollama = {version = "^0.2.0", optional = true}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+black = "^24.10.0"
+ruff = "^0.7.3"
+mypy = "^1.13.0"
+httpx = "^0.28.1"
+
+[tool.poetry.extras]
+redis = ["redis"]
+local-llm = ["ollama", "langchain-ollama"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | migrations
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".venv",
+    "migrations",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --cov=app --cov-report=term-missing --cov-report=html"
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "tests/*",
+    "app/__init__.py",
+    "app/*/migrations/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
