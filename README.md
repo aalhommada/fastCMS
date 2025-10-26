@@ -34,7 +34,7 @@ FastCMS is the **first FastAPI backend with native AI agents**:
 ### Prerequisites
 
 - Python 3.11+
-- Poetry (recommended) or pip
+- uv (recommended) or pip
 
 ### Installation
 
@@ -43,8 +43,14 @@ FastCMS is the **first FastAPI backend with native AI agents**:
 git clone https://github.com/yourusername/fastCMS.git
 cd fastCMS
 
-# Install dependencies with Poetry
-poetry install
+# Install uv (if not already installed)
+# On Windows:
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+# On macOS/Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies with uv (fastest!)
+uv pip install -e .
 
 # Or with pip
 pip install -r requirements.txt
@@ -56,13 +62,13 @@ cp .env.example .env
 # Generate with: openssl rand -hex 32
 
 # Run database migrations
-alembic upgrade head
+uv run alembic upgrade head
 
 # Start the development server
-poetry run python app/main.py
+uv run uvicorn app.main:app --reload
 
-# Or with uvicorn directly
-uvicorn app.main:app --reload
+# Or run directly
+python app/main.py
 ```
 
 The API will be available at `http://localhost:8000`

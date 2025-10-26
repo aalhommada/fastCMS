@@ -1,61 +1,57 @@
-[tool.poetry]
+[project]
 name = "fastcms"
 version = "0.1.0"
 description = "AI-Native Backend-as-a-Service - Open-source PocketBase alternative with FastAPI"
-authors = ["Your Name <your.email@example.com>"]
+authors = [{ name = "FastCMS Team", email = "team@fastcms.dev" }]
 readme = "README.md"
-license = "MIT"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sqlalchemy>=2.0.35",
+    "alembic>=1.13.3",
+    "pydantic>=2.9.2",
+    "pydantic-settings>=2.6.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.17",
+    "aiosqlite>=0.20.0",
+    "jinja2>=3.1.4",
+    "httpx>=0.28.1",
+    "pillow>=11.0.0",
+    "python-dotenv>=1.0.1",
+    "aiofiles>=24.1.0",
+    "orjson>=3.10.7",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-fastapi = "^0.115.0"
-uvicorn = {extras = ["standard"], version = "^0.32.0"}
-sqlalchemy = "^2.0.35"
-alembic = "^1.13.3"
-pydantic = "^2.9.2"
-pydantic-settings = "^2.6.0"
-python-jose = {extras = ["cryptography"], version = "^3.3.0"}
-passlib = {extras = ["bcrypt"], version = "^1.7.4"}
-python-multipart = "^0.0.17"
-aiosqlite = "^0.20.0"
-jinja2 = "^3.1.4"
-httpx = "^0.28.1"
-pillow = "^11.0.0"
-python-dotenv = "^1.0.1"
-aiofiles = "^24.1.0"
-orjson = "^3.10.7"
-redis = {version = "^5.2.0", optional = true}
-
-# AI Dependencies
-langchain = "^0.3.7"
-langchain-openai = "^0.2.8"
-langchain-anthropic = "^0.2.4"
-langgraph = "^0.2.45"
-faiss-cpu = "^1.9.0"
-sentence-transformers = "^3.3.1"
-tiktoken = "^0.8.0"
-qdrant-client = "^1.12.1"
-openai = "^1.54.5"
-langchain-community = "^0.3.7"
-ollama = {version = "^0.4.2", optional = true}
-langchain-ollama = {version = "^0.2.0", optional = true}
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.3"
-pytest-asyncio = "^0.24.0"
-pytest-cov = "^6.0.0"
-black = "^24.10.0"
-ruff = "^0.7.3"
-mypy = "^1.13.0"
-httpx = "^0.28.1"
-
-[tool.poetry.extras]
-redis = ["redis"]
-local-llm = ["ollama", "langchain-ollama"]
+[project.optional-dependencies]
+ai = [
+    "langchain>=0.3.7",
+    "langchain-openai>=0.2.8",
+    "langchain-anthropic>=0.2.4",
+    "langgraph>=0.2.45",
+    "faiss-cpu>=1.9.0",
+    "sentence-transformers>=3.3.1",
+    "tiktoken>=0.8.0",
+    "qdrant-client>=1.12.1",
+    "openai>=1.54.5",
+    "langchain-community>=0.3.7",
+]
+redis = ["redis>=5.2.0"]
+local-llm = ["ollama>=0.4.2", "langchain-ollama>=0.2.0"]
+dev = [
+    "pytest>=8.3.3",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "black>=24.10.0",
+    "ruff>=0.7.3",
+    "mypy>=1.13.0",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.black]
 line-length = 100
