@@ -9,7 +9,7 @@ Self-hosted Backend-as-a-Service built with FastAPI. Create dynamic collections,
 - [x] Authentication - JWT-based auth with register/login
 - [x] CRUD API - Create, read, update, delete records
 - [x] File Storage - Upload and serve files
-- [ ] Real-time Updates - Server-Sent Events
+- [x] Real-time Updates - Server-Sent Events
 - [ ] Admin Dashboard - Web UI for management
 - [ ] Access Control - Permission rules per collection
 
@@ -23,28 +23,31 @@ Self-hosted Backend-as-a-Service built with FastAPI. Create dynamic collections,
 
 ## Installation
 
-### Windows
 ```bash
+# Clone the repository
 git clone https://github.com/aalhommada/fastCMS.git
 cd fastCMS
-.\fix_and_run.bat
-```
 
-### Manual Setup
-```bash
-git clone https://github.com/aalhommada/fastCMS.git
-cd fastCMS
+# Create virtual environment
 python -m venv .venv
 
 # Activate virtual environment
-# Windows: .venv\Scripts\activate.bat
-# Linux/Mac: source .venv/bin/activate
+# Windows:
+.venv\Scripts\activate
+# Linux/Mac:
+# source .venv/bin/activate
 
+# Install dependencies
 pip install -r requirements.txt
-cp .env.example .env
-# Edit .env and set SECRET_KEY
 
+# Setup environment
+cp .env.example .env
+# Edit .env and set SECRET_KEY (generate: openssl rand -hex 32)
+
+# Run database migrations
 alembic upgrade head
+
+# Start the server
 python app/main.py
 ```
 

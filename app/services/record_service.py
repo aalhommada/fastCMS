@@ -19,6 +19,7 @@ from app.core.exceptions import (
     ValidationException,
     BadRequestException,
 )
+from app.core.events import event_manager, Event, EventType
 
 
 class RecordService:
@@ -48,7 +49,18 @@ class RecordService:
         record = await self.repo.create(validated_data)
         await self.db.commit()
 
-        return self._to_response(record)
+        # Broadcast event
+        response = self._to_response(record)
+        await event_manager.broadcast(
+            Event(
+                event_type=EventType.RECORD_CREATED,
+                collection_name=self.collection_name,
+                record_id=record.id,
+                data=response.data,
+            )
+        )
+
+        return response
 
     async def get_record(self, record_id: str) -> RecordResponse:
         """Get a record by ID."""
@@ -118,15 +130,42 @@ class RecordService:
         updated_record = await self.repo.update(record_id, validated_data)
         await self.db.commit()
 
-        return self._to_response(updated_record)
+        # Broadcast event
+        response = self._to_response(updated_record)
+        await event_manager.broadcast(
+            Event(
+                event_type=EventType.RECORD_UPDATED,
+                collection_name=self.collection_name,
+                record_id=updated_record.id,
+                data=response.data,
+            )
+        )
+
+        return response
 
     async def delete_record(self, record_id: str) -> None:
         """Delete a record."""
+        # Get record before deleting
+        record = await self.repo.get_by_id(record_id)
+        if not record:
+            raise NotFoundException(f"Record '{record_id}' not found")
+
+        # Delete record
         success = await self.repo.delete(record_id)
         if not success:
             raise NotFoundException(f"Record '{record_id}' not found")
 
         await self.db.commit()
+
+        # Broadcast event
+        await event_manager.broadcast(
+            Event(
+                event_type=EventType.RECORD_DELETED,
+                collection_name=self.collection_name,
+                record_id=record_id,
+                data={"id": record_id},
+            )
+        )
 
     def _validate_fields(
         self, data: Dict[str, Any], field_schemas: List[FieldSchema], is_create: bool
