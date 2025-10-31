@@ -167,15 +167,15 @@ async def root() -> dict[str, str]:
 
 
 # Include API routers
-from app.api.v1 import auth, collections, records
+from app.api.v1 import auth, collections, records, files
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(collections.router, prefix="/api/v1/collections", tags=["Collections"])
 app.include_router(records.router, prefix="/api/v1", tags=["Records"])
+app.include_router(files.router, prefix="/api/v1", tags=["Files"])
 
 # TODO: Include remaining routers
-# from app.api.v1 import files, ai
-# app.include_router(files.router, prefix="/api/v1/files", tags=["Files"])
+# from app.api.v1 import ai
 # app.include_router(ai.router, prefix="/api/v1/ai", tags=["AI"])
 
 if __name__ == "__main__":

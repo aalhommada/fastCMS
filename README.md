@@ -8,7 +8,7 @@ Self-hosted Backend-as-a-Service built with FastAPI. Create dynamic collections,
 - [x] Dynamic Collections - Create database tables via API
 - [x] Authentication - JWT-based auth with register/login
 - [x] CRUD API - Create, read, update, delete records
-- [ ] File Storage - Upload and serve files
+- [x] File Storage - Upload and serve files
 - [ ] Real-time Updates - Server-Sent Events
 - [ ] Admin Dashboard - Web UI for management
 - [ ] Access Control - Permission rules per collection
