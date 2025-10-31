@@ -82,3 +82,5 @@ temp/
 Thumbs.db
 .DS_Store
 
+TODO.md
+.claude/
