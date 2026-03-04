@@ -254,6 +254,7 @@ async def delete_current_user(
     description="Change the authenticated user's password. Requires authentication.",
 )
 async def change_password(
+    request: Request,
     data: PasswordChange,
     user_id: str = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
@@ -262,12 +263,14 @@ async def change_password(
     Change user password.
 
     Args:
+        request: HTTP request (for IP extraction)
         data: Password change data
         user_id: Authenticated user ID
         db: Database session
     """
     service = AuthService(db)
-    await service.change_password(user_id, data)
+    _, ip_address = get_client_info(request)
+    await service.change_password(user_id, data, ip_address)
 
 
 @router.post(

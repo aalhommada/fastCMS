@@ -123,6 +123,13 @@ class TwoFactorService:
 
         logger.info(f"2FA enabled for user {user_id}")
 
+        # Notify user (fire-and-forget)
+        from app.core.config import settings
+        if settings.SMTP_ENABLED and settings.SECURITY_NOTIFICATIONS_ENABLED:
+            import asyncio
+            from app.services.email_service import EmailService
+            asyncio.create_task(EmailService.send_2fa_enabled_notification(user.email))
+
         return {
             "enabled": True,
             "backup_codes": backup_codes,
@@ -158,6 +165,13 @@ class TwoFactorService:
         await self.db.commit()
 
         logger.info(f"2FA disabled for user {user_id}")
+
+        # Notify user (fire-and-forget)
+        from app.core.config import settings
+        if settings.SMTP_ENABLED and settings.SECURITY_NOTIFICATIONS_ENABLED:
+            import asyncio
+            from app.services.email_service import EmailService
+            asyncio.create_task(EmailService.send_2fa_disabled_notification(user.email))
 
         return {
             "enabled": False,

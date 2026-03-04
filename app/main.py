@@ -278,6 +278,7 @@ from app.api.v1 import (
 )
 from app.api.v1.metrics_api import router as metrics_router
 from app.api.v1.plugins import router as plugins_router
+from app.api.v1.email_admin import router as email_admin_router
 from fastapi.responses import RedirectResponse
 
 app.include_router(health.router, tags=["Health"])
@@ -303,6 +304,7 @@ app.include_router(webhooks.router, prefix="/api/v1", tags=["Webhooks"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(metrics_router, prefix="/api/v1/admin", tags=["Metrics"])
 app.include_router(plugins_router, prefix="/api/v1/admin", tags=["Plugins"])
+app.include_router(email_admin_router, prefix="/api/v1/admin", tags=["Admin - Email"])
 app.include_router(admin_routes.router, prefix="/admin", tags=["Admin UI"])
 
 

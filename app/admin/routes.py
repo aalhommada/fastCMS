@@ -270,6 +270,31 @@ async def admin_settings(
     )
 
 
+@router.get("/settings/email", response_class=HTMLResponse)
+async def admin_email_settings(
+    request: Request,
+    user: UserContext = Depends(require_admin_ui),
+):
+    """Email settings and SMTP configuration page."""
+    from app.core.config import settings as app_settings
+    return templates.TemplateResponse(
+        "email_settings.html",
+        {
+            "request": request,
+            "user": user,
+            "active": "email_settings",
+            "smtp_enabled": app_settings.SMTP_ENABLED,
+            "smtp_host": app_settings.SMTP_HOST,
+            "smtp_port": app_settings.SMTP_PORT,
+            "smtp_user": app_settings.SMTP_USER,
+            "smtp_from_email": app_settings.SMTP_FROM_EMAIL,
+            "smtp_from_name": app_settings.SMTP_FROM_NAME,
+            "security_notifications_enabled": app_settings.SECURITY_NOTIFICATIONS_ENABLED,
+            "security_login_notifications": app_settings.SECURITY_LOGIN_NOTIFICATIONS,
+        },
+    )
+
+
 @router.get("/profile", response_class=HTMLResponse)
 async def admin_profile(
     request: Request,

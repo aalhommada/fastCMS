@@ -105,6 +105,9 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM_EMAIL: str = "noreply@fastcms.dev"
     SMTP_FROM_NAME: str = "FastCMS"
+    # Security notifications — sent to user on security-relevant events
+    SECURITY_NOTIFICATIONS_ENABLED: bool = True   # master switch (requires SMTP)
+    SECURITY_LOGIN_NOTIFICATIONS: bool = False     # optional: email on every login
 
     # OAuth2 (optional)
     GOOGLE_CLIENT_ID: str = ""

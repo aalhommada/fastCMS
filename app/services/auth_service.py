@@ -180,6 +180,15 @@ class AuthService:
                         f"Account locked for {data.email} after "
                         f"{user.failed_login_attempts} failed attempts"
                     )
+                    # Notify user of account lockout
+                    if settings.SMTP_ENABLED and settings.SECURITY_NOTIFICATIONS_ENABLED:
+                        import asyncio
+                        lockout_minutes = settings.ACCOUNT_LOCKOUT_DURATION // 60
+                        asyncio.create_task(
+                            EmailService.send_account_locked_notification(
+                                user.email, lockout_minutes, settings.BASE_URL
+                            )
+                        )
                 await self.user_repo.update(user)
                 await self.db.commit()
             raise UnauthorizedException("Invalid email or password")
@@ -222,6 +231,16 @@ class AuthService:
 
         # Generate tokens
         tokens = await self._create_tokens(user, user_agent, ip_address)
+
+        # Optional: send login notification (fire-and-forget)
+        if (settings.SMTP_ENABLED and settings.SECURITY_NOTIFICATIONS_ENABLED
+                and settings.SECURITY_LOGIN_NOTIFICATIONS and ip_address):
+            import asyncio
+            asyncio.create_task(
+                EmailService.send_login_notification(
+                    user.email, ip_address, user_agent or "Unknown", settings.BASE_URL
+                )
+            )
 
         return AuthResponse(
             user=self._to_user_response(user),
@@ -382,6 +401,7 @@ class AuthService:
         self,
         user_id: str,
         data: PasswordChange,
+        ip_address: Optional[str] = None,
     ) -> None:
         """
         Change user password.
@@ -427,6 +447,15 @@ class AuthService:
         await self.db.commit()
 
         logger.info(f"Password changed for user: {user.email}")
+
+        # Notify user
+        if settings.SMTP_ENABLED and settings.SECURITY_NOTIFICATIONS_ENABLED:
+            import asyncio
+            asyncio.create_task(
+                EmailService.send_password_changed_notification(
+                    user.email, ip_address or "Unknown", settings.BASE_URL
+                )
+            )
 
     async def _create_tokens(
         self,
@@ -620,6 +649,15 @@ class AuthService:
         await self.db.commit()
 
         logger.info(f"Password reset for user: {user.email}")
+
+        # Notify user
+        if settings.SMTP_ENABLED and settings.SECURITY_NOTIFICATIONS_ENABLED:
+            import asyncio
+            asyncio.create_task(
+                EmailService.send_password_changed_notification(
+                    user.email, "password reset flow", settings.BASE_URL
+                )
+            )
 
     async def get_sessions(self, user_id: str) -> list[dict]:
         """
