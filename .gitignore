@@ -77,6 +77,11 @@ sdk/python/.ruff_cache/
 hooks/*.py
 !hooks/example.py
 
+# Plugin packages (user plugins — keep only example_plugin)
+plugins/*/
+!plugins/__init__.py
+!plugins/example_plugin/
+
 # Thumbnail cache
 data/files/thumbs/
 

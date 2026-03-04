@@ -6,13 +6,17 @@ Events are published to the Pub/Sub system and also trigger webhooks.
 """
 
 import asyncio
+from collections import defaultdict
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Coroutine, Dict, List, Optional
 
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+# Type alias for hook handler functions
+EventHandler = Callable[["Event"], Coroutine[Any, Any, None]]
 
 
 class EventType(str, Enum):
@@ -84,6 +88,48 @@ class Event:
         return f"Event({self.type.value}, {self.collection_name}, {self.record_id})"
 
 
+class EventDispatcher:
+    """
+    In-process event dispatcher — routes events to registered hook handlers.
+
+    Handlers are async callables: ``async def handler(event: Event) -> None``.
+    """
+
+    def __init__(self):
+        self._handlers: dict[EventType, List[EventHandler]] = defaultdict(list)
+        self._global_handlers: List[EventHandler] = []
+
+    def on(self, event_type: EventType, handler: EventHandler) -> None:
+        """Register *handler* to fire when *event_type* is dispatched."""
+        self._handlers[event_type].append(handler)
+
+    def on_all(self, handler: EventHandler) -> None:
+        """Register *handler* to fire on every event regardless of type."""
+        self._global_handlers.append(handler)
+
+    async def dispatch(self, event: "Event") -> None:
+        """Call all handlers registered for the event's type, plus global ones."""
+        handlers = self._handlers.get(event.type, []) + self._global_handlers
+        for handler in handlers:
+            try:
+                await handler(event)
+            except Exception as e:
+                logger.error(
+                    f"Hook handler '{handler.__name__}' raised an error "
+                    f"for event {event.type.value} on '{event.collection_name}': {e}",
+                    exc_info=True,
+                )
+
+
+# Global dispatcher singleton — shared between hook_loader and EventBroadcaster
+_dispatcher = EventDispatcher()
+
+
+def get_dispatcher() -> EventDispatcher:
+    """Return the global EventDispatcher instance."""
+    return _dispatcher
+
+
 class EventBroadcaster:
     """
     Broadcasts events to real-time clients and triggers webhooks.
@@ -102,14 +148,17 @@ class EventBroadcaster:
         """
         logger.debug(f"Broadcasting event: {event}")
 
-        # 1. Publish to WebSocket clients via connection manager
+        # 1. Dispatch to in-process user hook handlers
+        asyncio.create_task(_dispatcher.dispatch(event))
+
+        # 2. Publish to WebSocket clients via connection manager
         try:
             from app.core.websocket_manager import connection_manager
             await connection_manager.broadcast_event(event.to_dict())
         except Exception as e:
             logger.error(f"Failed to broadcast to WebSocket clients: {e}")
 
-        # 2. Trigger webhooks asynchronously (fire and forget)
+        # 3. Trigger webhooks asynchronously (fire and forget)
         asyncio.create_task(self._trigger_webhooks(event))
 
     async def broadcast_record_event(

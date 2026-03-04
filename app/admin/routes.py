@@ -219,6 +219,33 @@ async def admin_webhooks(
     )
 
 
+@router.get("/plugins", response_class=HTMLResponse)
+async def admin_plugins(
+    request: Request,
+    user: UserContext = Depends(require_admin_ui),
+):
+    """Plugins management page — lists all loaded plugin packages."""
+    from app.core.plugin_registry import get_registry
+    return templates.TemplateResponse(
+        "plugins.html",
+        {"request": request, "user": user, "active": "plugins",
+         "plugins": get_registry().get_plugins()},
+    )
+
+
+@router.get("/hooks", response_class=HTMLResponse)
+async def admin_hooks(
+    request: Request,
+    user: UserContext = Depends(require_admin_ui),
+):
+    """Hooks management page — lists all loaded Python hook files."""
+    from app.core.hook_loader import get_loaded_hooks
+    return templates.TemplateResponse(
+        "hooks.html",
+        {"request": request, "user": user, "active": "hooks", "hooks": get_loaded_hooks()},
+    )
+
+
 @router.get("/backups", response_class=HTMLResponse)
 async def admin_backups(
     request: Request,

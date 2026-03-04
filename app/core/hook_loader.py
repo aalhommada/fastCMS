@@ -1,13 +1,15 @@
 """
 Hook loader — scans and imports user hook scripts from ./hooks/ at startup.
 
-User scripts in hooks/ can use the decorator API:
+User scripts in hooks/ use the decorator API:
 
-    from fastcms.hooks import on_record_create, on_record_update, on_record_delete
+    from app.fastcms_hooks_api import on_record_create, on_record_update, on_record_delete
 
     @on_record_create("posts")
     async def handle_new_post(event):
-        print(f"New post: {event.record}")
+        print(f"New post: {event.record_id}")
+
+Event attributes: event.type, event.collection_name, event.record_id, event.data
 """
 
 import importlib.util

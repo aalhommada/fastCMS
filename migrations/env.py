@@ -18,6 +18,19 @@ from app.db.base import Base
 # Import all models here to ensure they're registered with Base.metadata
 from app.db.models.collection import Collection
 from app.db.models.user import User, RefreshToken
+from app.db.models.plugin_setting import PluginSetting  # noqa: F401
+
+# Auto-import plugin models so Alembic tracks plugin-defined tables
+import contextlib
+import importlib
+import pkgutil
+from pathlib import Path as _Path
+
+_plugins_path = _Path("plugins")
+if _plugins_path.exists():
+    for _pkg in pkgutil.iter_modules([str(_plugins_path)]):
+        with contextlib.suppress(ImportError, AttributeError):
+            importlib.import_module(f"plugins.{_pkg.name}.models")
 
 # Alembic Config object
 config = context.config

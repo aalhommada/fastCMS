@@ -74,7 +74,7 @@ class RecordService:
         response = self._to_response(record)
         await event_manager.broadcast(
             Event(
-                event_type=EventType.RECORD_CREATED,
+                type=EventType.RECORD_CREATED,
                 collection_name=self.collection_name,
                 record_id=record.id,
                 data=response.data,
@@ -254,7 +254,7 @@ class RecordService:
         response = self._to_response(updated_record)
         await event_manager.broadcast(
             Event(
-                event_type=EventType.RECORD_UPDATED,
+                type=EventType.RECORD_UPDATED,
                 collection_name=self.collection_name,
                 record_id=updated_record.id,
                 data=response.data,
@@ -291,7 +291,7 @@ class RecordService:
         # Broadcast event
         await event_manager.broadcast(
             Event(
-                event_type=EventType.RECORD_DELETED,
+                type=EventType.RECORD_DELETED,
                 collection_name=self.collection_name,
                 record_id=record_id,
                 data={"id": record_id},

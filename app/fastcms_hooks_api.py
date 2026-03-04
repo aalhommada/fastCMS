@@ -1,11 +1,10 @@
 """
-Public decorator API for user hook scripts.
+Public decorator API for user hook scripts (hooks/*.py drop-in files).
 
 Usage in hooks/*.py files:
     from app.fastcms_hooks_api import on_record_create, on_record_update, on_record_delete
 
-Or with the alias:
-    from fastcms_hooks_api import on_record_create
+For full plugin packages (plugins/my_plugin/), use app.fastcms_plugin_api instead.
 """
 
 from typing import Callable, Optional

@@ -1,66 +1,14 @@
 """
-Hooks system - decorator-based event handlers
-Provides easy registration of hooks for all operations
+Internal hooks utilities for service-layer before/after event patterns.
+
+For user hook scripts (hooks/*.py): use app.fastcms_hooks_api
+For plugin packages (plugins/*/): use app.fastcms_plugin_api
 """
 from typing import Callable, Awaitable, Any, Dict, Optional
-from functools import wraps
-from app.core.events import Event, EventType, get_dispatcher, EventHandler
+from app.core.events import Event, EventHandler, EventType, get_dispatcher
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
-
-
-def hook(event_type: EventType):
-    """
-    Decorator to register a function as an event hook
-
-    Usage:
-        @hook(EventType.RECORD_BEFORE_CREATE)
-        async def validate_post(event: Event):
-            if event.collection_name == "posts":
-                # Validate post data
-                pass
-
-    Args:
-        event_type: The event type to hook into
-    """
-
-    def decorator(func: EventHandler) -> EventHandler:
-        # Register the function as a handler
-        dispatcher = get_dispatcher()
-        dispatcher.on(event_type, func)
-        logger.info(f"Registered hook: {func.__name__} for {event_type.value}")
-
-        @wraps(func)
-        async def wrapper(event: Event) -> None:
-            return await func(event)
-
-        return wrapper
-
-    return decorator
-
-
-def hook_all(func: EventHandler) -> EventHandler:
-    """
-    Decorator to register a function as a global hook (all events)
-
-    Usage:
-        @hook_all
-        async def log_all_events(event: Event):
-            logger.info(f"Event: {event.type.value}")
-
-    Args:
-        func: The handler function
-    """
-    dispatcher = get_dispatcher()
-    dispatcher.on_all(func)
-    logger.info(f"Registered global hook: {func.__name__}")
-
-    @wraps(func)
-    async def wrapper(event: Event) -> None:
-        return await func(event)
-
-    return wrapper
 
 
 class HookContext:
@@ -99,10 +47,8 @@ class HookContext:
         event = Event(
             type=self.before_event,
             data=self.data,
-            collection_name=self.collection_name,
+            collection_name=self.collection_name or "",
             record_id=self.record_id,
-            user_id=self.user_id,
-            metadata=self.metadata,
         )
         await self.dispatcher.dispatch(event)
         return self
@@ -118,10 +64,8 @@ class HookContext:
             event = Event(
                 type=self.after_event,
                 data=data,
-                collection_name=self.collection_name,
+                collection_name=self.collection_name or "",
                 record_id=self.record_id,
-                user_id=self.user_id,
-                metadata=self.metadata,
             )
             await self.dispatcher.dispatch(event)
 
@@ -153,10 +97,8 @@ async def emit_event(
     event = Event(
         type=event_type,
         data=data or {},
-        collection_name=collection_name,
+        collection_name=collection_name or "",
         record_id=record_id,
-        user_id=user_id,
-        metadata=metadata or {},
     )
     await dispatcher.dispatch(event)
 

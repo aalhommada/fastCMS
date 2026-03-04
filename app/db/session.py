@@ -104,6 +104,7 @@ async def init_db() -> None:
         file,
         logs,
         oauth,
+        plugin_setting,
         search,
         settings as settings_model,
         user,

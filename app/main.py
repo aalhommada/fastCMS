@@ -60,6 +60,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from app.core.hook_loader import load_hooks
     load_hooks("./hooks")
 
+    # Load plugin packages from ./plugins/
+    from app.core.plugin_loader import load_plugins
+    from app.services.plugin_service import get_all_plugin_settings
+    _plugin_settings = await get_all_plugin_settings()
+    load_plugins("./plugins", app, _plugin_settings)
+
     logger.info(f"{settings.APP_NAME} started successfully")
 
     yield
@@ -271,6 +277,7 @@ from app.api.v1 import (
     settings as settings_router, setup, views, webhooks
 )
 from app.api.v1.metrics_api import router as metrics_router
+from app.api.v1.plugins import router as plugins_router
 from fastapi.responses import RedirectResponse
 
 app.include_router(health.router, tags=["Health"])
@@ -295,6 +302,7 @@ app.include_router(realtime.router, prefix="/api/v1", tags=["Real-time"])
 app.include_router(webhooks.router, prefix="/api/v1", tags=["Webhooks"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(metrics_router, prefix="/api/v1/admin", tags=["Metrics"])
+app.include_router(plugins_router, prefix="/api/v1/admin", tags=["Plugins"])
 app.include_router(admin_routes.router, prefix="/admin", tags=["Admin UI"])
 
 

@@ -147,6 +147,24 @@
           Webhooks
         </a>
 
+        <!-- Hooks -->
+        <a
+          href="/admin/hooks"
+          class="{% if active == 'hooks' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors"
+        >
+          <i class="fas fa-plug w-5 text-center mr-3 text-purple-400"></i>
+          Hooks
+        </a>
+
+        <!-- Plugins -->
+        <a
+          href="/admin/plugins"
+          class="{% if active == 'plugins' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors"
+        >
+          <i class="fas fa-puzzle-piece w-5 text-center mr-3 text-blue-400"></i>
+          Plugins
+        </a>
+
         <!-- Backups -->
         <a
           href="/admin/backups"

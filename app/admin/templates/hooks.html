@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Hooks{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Python Hooks</h1>
+      <p class="mt-1 text-sm text-gray-500">
+        Server-side hooks loaded from the <code class="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">hooks/</code> directory.
+        Changes require a server restart to take effect.
+      </p>
+    </div>
+    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+      {% if hooks %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-600{% endif %}">
+      <i class="fas fa-circle mr-2 text-xs {% if hooks %}text-green-500{% else %}text-gray-400{% endif %}"></i>
+      {{ hooks|length }} file{% if hooks|length != 1 %}s{% endif %} loaded
+    </span>
+  </div>
+
+  {% if hooks %}
+  <!-- Loaded hook files -->
+  <div class="space-y-4">
+    {% for hook in hooks %}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+            <i class="fas fa-plug text-purple-600 text-sm"></i>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-900 font-mono">{{ hook.file.split('/')[-1] }}</p>
+            <p class="text-xs text-gray-400 font-mono">{{ hook.file }}</p>
+          </div>
+        </div>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+          {{ hook.functions|length }} export{% if hook.functions|length != 1 %}s{% endif %}
+        </span>
+      </div>
+
+      {% if hook.functions %}
+      <div class="px-5 py-3">
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Exported names</p>
+        <div class="flex flex-wrap gap-2">
+          {% for fn in hook.functions %}
+          <span class="inline-flex items-center px-2 py-1 rounded text-xs font-mono bg-gray-100 text-gray-700">
+            <i class="fas fa-code mr-1.5 text-gray-400 text-xs"></i>{{ fn }}
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <!-- Empty state -->
+  <div class="bg-white rounded-xl shadow-sm border border-dashed border-gray-300 p-12 text-center">
+    <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <i class="fas fa-plug text-gray-400 text-2xl"></i>
+    </div>
+    <h3 class="text-base font-semibold text-gray-900 mb-1">No hooks loaded</h3>
+    <p class="text-sm text-gray-500 mb-4 max-w-sm mx-auto">
+      Create a <code class="bg-gray-100 px-1 py-0.5 rounded text-xs">.py</code> file in the
+      <code class="bg-gray-100 px-1 py-0.5 rounded text-xs">hooks/</code> directory and restart the server.
+    </p>
+    <div class="bg-gray-50 rounded-lg p-4 text-left text-xs font-mono text-gray-600 max-w-md mx-auto">
+      <p class="text-gray-400 mb-1"># hooks/my_hooks.py</p>
+      <p>from app.fastcms_hooks_api import on_record_create</p>
+      <p>&nbsp;</p>
+      <p>@on_record_create("posts")</p>
+      <p>async def handle_new_post(event):</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;print(f"New post: {'{'}event.record_id{'}'}")</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Reference card -->
+  <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5">
+    <h3 class="text-sm font-semibold text-indigo-900 mb-3">
+      <i class="fas fa-book mr-2"></i>Quick Reference
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+      <div>
+        <p class="text-indigo-700 font-semibold mb-1 font-sans text-xs">Import path</p>
+        <p class="text-gray-700">from app.fastcms_hooks_api import on_record_create, on_record_update, on_record_delete, on_any_event</p>
+      </div>
+      <div>
+        <p class="text-indigo-700 font-semibold mb-1 font-sans text-xs">Event attributes</p>
+        <p class="text-gray-700">event.type &nbsp;&nbsp; event.collection_name</p>
+        <p class="text-gray-700">event.record_id &nbsp; event.data</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
