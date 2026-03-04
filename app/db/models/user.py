@@ -2,8 +2,9 @@
 User model for authentication.
 """
 
+from datetime import datetime
 from typing import Optional
-from sqlalchemy import Boolean, String, Text
+from sqlalchemy import Boolean, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.models.base import BaseModel
@@ -75,6 +76,26 @@ class User(BaseModel):
         String(50),
         nullable=False,
         default="user",
+    )
+
+    # Account lockout
+    failed_login_attempts: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+
+    locked_until: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
+    )
+
+    # Password history (JSON array of previous hashes, newest first)
+    password_history: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
     )
 
     # Two-Factor Authentication (2FA/TOTP)

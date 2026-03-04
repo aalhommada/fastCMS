@@ -47,7 +47,10 @@ class CollectionCreate(CollectionBase):
 
     options: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Collection options",
+        description=(
+            "Collection options. For auth collections, supports: "
+            "identity_field (str, default 'email') — field used as login identity."
+        ),
     )
 
     # Access control rules
@@ -70,6 +73,10 @@ class CollectionCreate(CollectionBase):
     delete_rule: Optional[str] = Field(
         default=None,
         description="Rule for deleting records",
+    )
+    manage_rule: Optional[str] = Field(
+        default=None,
+        description="Rule for managing other users' records in auth collections",
     )
 
     # View query (required for view collections)
@@ -117,6 +124,7 @@ class CollectionUpdate(BaseModel):
     create_rule: Optional[str] = None
     update_rule: Optional[str] = None
     delete_rule: Optional[str] = None
+    manage_rule: Optional[str] = None
     view_query: Optional[str] = None
 
 
@@ -132,6 +140,7 @@ class CollectionResponse(CollectionBase):
     create_rule: Optional[str]
     update_rule: Optional[str]
     delete_rule: Optional[str]
+    manage_rule: Optional[str] = None
     view_query: Optional[str]
 
     system: bool
@@ -165,4 +174,5 @@ class CollectionSchemaExport(BaseModel):
     create_rule: Optional[str]
     update_rule: Optional[str]
     delete_rule: Optional[str]
+    manage_rule: Optional[str] = None
     view_query: Optional[str]

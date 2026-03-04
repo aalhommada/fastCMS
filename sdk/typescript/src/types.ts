@@ -75,3 +75,41 @@ export interface SearchResult<T> {
   query: string;
   count: number;
 }
+
+// ─── Error types ─────────────────────────────────────────────────────────────
+
+export class FastCMSError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    public readonly data?: any
+  ) {
+    super(message);
+    this.name = 'FastCMSError';
+  }
+}
+
+export class AuthError extends FastCMSError {
+  constructor(message: string, status?: number, data?: any) {
+    super(message, status, data);
+    this.name = 'AuthError';
+  }
+}
+
+export class ValidationError extends FastCMSError {
+  constructor(
+    message: string,
+    public readonly fields?: Record<string, string[]>,
+    status?: number
+  ) {
+    super(message, status ?? 422, fields);
+    this.name = 'ValidationError';
+  }
+}
+
+export class NetworkError extends FastCMSError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NetworkError';
+  }
+}

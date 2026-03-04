@@ -154,3 +154,6 @@ class get_db_context:
         else:
             await self.session.commit()
         await self.session.close()
+
+# Alias for use in middleware
+get_async_session = get_db_context

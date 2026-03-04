@@ -99,21 +99,77 @@ async def get_file(
     "/files/{file_id}/download",
     response_class=FileResponse,
     summary="Download file",
+    description=(
+        "Download file content. "
+        "Protected files require `?token=` (from POST /files/{id}/token) or authentication. "
+        "For images, add `?thumb=WxH` to get a resized thumbnail. "
+        "Modifiers: none=center-crop, f=fit/letterbox, t=top-crop, b=bottom-crop. "
+        "Use `0xH` or `Wx0` for proportional resize. Examples: `300x200`, `300x200f`, `0x150`."
+    ),
 )
 async def download_file(
     file_id: str,
+    thumb: Optional[str] = Query(
+        None,
+        description="Thumbnail spec, e.g. '300x200', '300x200f', '0x150'",
+        pattern=r"^\d+x\d+[fbt]?$",
+    ),
+    token: Optional[str] = Query(None, description="File access token for protected files"),
     db: AsyncSession = Depends(get_db),
     user_id: Optional[str] = Depends(get_optional_user_id),
 ):
-    """Download file content."""
+    """Download file content, optionally resized to a thumbnail spec."""
     service = FileService(db)
-    file_path, original_filename, mime_type = await service.get_file_content(file_id)
 
+    if thumb:
+        file_path, mime_type = await service.get_file_thumb(file_id, thumb)
+        return FileResponse(
+            path=file_path,
+            media_type=mime_type,
+        )
+
+    file_path, original_filename, mime_type = await service.get_file_content(
+        file_id, token=token, user_id=user_id
+    )
     return FileResponse(
         path=file_path,
         filename=original_filename,
         media_type=mime_type,
     )
+
+
+@router.post(
+    "/files/{file_id}/token",
+    summary="Generate file access token",
+    description="Generate a short-lived (2 min) access token for a protected file. Requires authentication.",
+)
+async def create_file_token(
+    file_id: str,
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(require_auth),
+):
+    """Generate a short-lived token for accessing a protected file."""
+    service = FileService(db)
+    token = await service.create_file_token(file_id, user_id)
+    return {"token": token, "expires_in": 120}
+
+
+@router.patch(
+    "/files/{file_id}/protected",
+    response_model=FileResponseSchema,
+    summary="Set file protection",
+    description="Mark a file as protected (requires token to download) or unprotected. Requires authentication.",
+)
+async def set_file_protected(
+    file_id: str,
+    protected: bool = Query(..., description="Whether the file should be protected"),
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(require_auth),
+):
+    """Toggle the protected flag on a file."""
+    service = FileService(db)
+    await service.set_file_protected(file_id, protected)
+    return await service.get_file(file_id)
 
 
 @router.delete(

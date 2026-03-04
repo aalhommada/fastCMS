@@ -33,5 +33,8 @@ class File(BaseModel):
     is_thumbnail: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     parent_file_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
 
+    # Access control
+    protected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
     # Soft delete
     deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

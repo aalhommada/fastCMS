@@ -547,3 +547,18 @@ async def get_index(
         status_code=404,
         detail=f"Index '{index_name}' not found"
     )
+
+
+@router.delete(
+    "/name/{collection_name}/truncate",
+    summary="Truncate a collection",
+    description="Delete all records in a collection without dropping the table. Requires admin.",
+)
+async def truncate_collection(
+    collection_name: str = Path(..., description="Collection name"),
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(require_admin),
+) -> dict:
+    """Delete all records in a collection (admin only)."""
+    service = CollectionService(db)
+    return await service.truncate_collection(collection_name)

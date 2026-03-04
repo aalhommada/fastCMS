@@ -58,6 +58,14 @@ class RecordService:
         # Validate data against schema
         validated_data = self._validate_fields(data.data, field_schemas, is_create=True)
 
+        # Auto-set autodate fields for create
+        from datetime import datetime, timezone as _tz
+        for fs in field_schemas:
+            if fs.type == FieldType.AUTODATE:
+                opts = fs.autodate
+                if opts is None or opts.on_create:
+                    validated_data[fs.name] = datetime.now(_tz.utc)
+
         # Create record
         record = await self.repo.create(validated_data)
         await self.db.commit()
@@ -211,9 +219,13 @@ class RecordService:
         if collection.type == "view":
             raise BadRequestException(f"Cannot update records in view collection '{self.collection_name}'")
 
-        # Check update permission
+        # Check update permission — pass old record data for :changed modifier support
         record_data = self._record_to_dict(existing)
-        context = self._create_access_context(record_data=record_data, request_data=data.data)
+        context = self._create_access_context(
+            record_data=record_data,
+            request_data=data.data,
+            old_record_data=dict(record_data),  # snapshot before update
+        )
         access_control.check(collection.update_rule, context, "update")
 
         # Extract fields from schema
@@ -225,6 +237,14 @@ class RecordService:
 
         # Validate data against schema
         validated_data = self._validate_fields(processed_data, field_schemas, is_create=False)
+
+        # Auto-update autodate fields configured for updates
+        from datetime import datetime, timezone as _tz
+        for fs in field_schemas:
+            if fs.type == FieldType.AUTODATE:
+                opts = fs.autodate
+                if opts is None or opts.on_update:
+                    validated_data[fs.name] = datetime.now(_tz.utc)
 
         # Update record
         updated_record = await self.repo.update(record_id, validated_data)
@@ -473,6 +493,10 @@ class RecordService:
         elif field_schema.type == FieldType.GEOPOINT:
             # Validate GeoPoint coordinates
             return validate_geopoint(value, field_schema.geopoint)
+
+        elif field_schema.type == FieldType.AUTODATE:
+            # Autodate fields are managed automatically; ignore user-supplied values
+            return None
 
         return value
 
@@ -774,9 +798,10 @@ class RecordService:
         return items[0] if is_single else items
 
     def _create_access_context(
-        self, 
+        self,
         record_data: Optional[Dict[str, Any]] = None,
-        request_data: Optional[Dict[str, Any]] = None
+        request_data: Optional[Dict[str, Any]] = None,
+        old_record_data: Optional[Dict[str, Any]] = None,
     ) -> AccessContext:
         """Create access context for permission evaluation."""
         return AccessContext(
@@ -784,4 +809,5 @@ class RecordService:
             user_role=self.user_context.role if self.user_context else "user",
             record_data=record_data,
             request_data=request_data,
+            old_record_data=old_record_data,
         )

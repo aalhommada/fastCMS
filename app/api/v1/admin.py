@@ -15,7 +15,7 @@ from app.db.models.user import User
 from app.db.repositories.collection import CollectionRepository
 from app.db.repositories.user import UserRepository
 from app.db.session import get_db
-from app.schemas.auth import UserResponse, UserRegister
+from app.schemas.auth import ImpersonationResponse, UserResponse, UserRegister
 from app.schemas.collection import CollectionResponse
 
 router = APIRouter()
@@ -343,6 +343,116 @@ async def delete_user(
     await db.commit()
 
 
+@router.post("/users/{user_id}/unlock", response_model=UserResponse, summary="Unlock a locked account")
+async def unlock_user(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: UserContext = Depends(require_admin),
+) -> UserResponse:
+    """
+    Unlock a user account that was locked due to too many failed login attempts (admin only).
+
+    Args:
+        user_id: User ID
+        db: Database session
+
+    Returns:
+        Updated user details
+    """
+    from app.core.exceptions import NotFoundException
+
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(user_id)
+
+    if not user:
+        raise NotFoundException(f"User {user_id} not found")
+
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    await user_repo.update(user)
+    await db.commit()
+
+    return UserResponse.model_validate(user)
+
+
+@router.post(
+    "/users/{user_id}/impersonate",
+    response_model=ImpersonationResponse,
+    summary="Impersonate a user (admin only)",
+)
+async def impersonate_user(
+    user_id: str,
+    duration: int = Query(3600, ge=60, le=86400, description="Token lifetime in seconds (60s–24h)"),
+    db: AsyncSession = Depends(get_db),
+    admin: UserContext = Depends(require_admin),
+) -> ImpersonationResponse:
+    """
+    Generate a short-lived impersonation token for any user (admin only).
+    The token is non-renewable — no refresh token is issued.
+    Useful for debugging and support.
+
+    Args:
+        user_id: The user to impersonate
+        duration: Token lifetime in seconds (default 1 hour, max 24 hours)
+    """
+    from app.core.exceptions import BadRequestException, NotFoundException
+    from app.core.security import create_impersonation_token
+
+    if admin.user_id == user_id:
+        raise BadRequestException("Cannot impersonate yourself")
+
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(user_id)
+
+    if not user:
+        raise NotFoundException(f"User {user_id} not found")
+
+    token = create_impersonation_token(user_id, admin.user_id, duration)
+    return ImpersonationResponse(
+        access_token=token,
+        expires_in=duration,
+        impersonated_user_id=user_id,
+    )
+
+
+@router.get("/users/{user_id}/lock-status", summary="Get account lock status")
+async def get_lock_status(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: UserContext = Depends(require_admin),
+) -> dict[str, Any]:
+    """
+    Get lock status of a user account (admin only).
+
+    Returns:
+        Lock status including failed attempts and locked_until timestamp
+    """
+    from app.core.exceptions import NotFoundException
+    from datetime import timezone
+
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(user_id)
+
+    if not user:
+        raise NotFoundException(f"User {user_id} not found")
+
+    from datetime import datetime
+    now = datetime.now(timezone.utc)
+    locked_until = user.locked_until
+    if locked_until and locked_until.tzinfo is None:
+        locked_until = locked_until.replace(tzinfo=timezone.utc)
+
+    is_locked = bool(locked_until and locked_until > now)
+
+    return {
+        "user_id": user_id,
+        "is_locked": is_locked,
+        "failed_login_attempts": user.failed_login_attempts or 0,
+        "locked_until": locked_until.isoformat() if locked_until else None,
+        "remaining_seconds": max(0, int((locked_until - now).total_seconds())) if is_locked else 0,
+    }
+
+
 @router.get(
     "/collections", response_model=dict[str, Any], summary="List all collections (admin view)"
 )
@@ -448,3 +558,123 @@ async def delete_collection_admin(
 
     await collection_repo.delete(collection)
     await db.commit()
+
+
+# ===== IP Rules (Allowlist / Blocklist) =====
+
+from datetime import datetime
+from pydantic import BaseModel as _BaseModel
+from typing import Optional as _Optional
+
+
+class IPRuleCreate(_BaseModel):
+    cidr: str
+    rule_type: str  # "allow" or "block"
+    reason: _Optional[str] = None
+    expires_at: _Optional[datetime] = None
+
+
+@router.get("/ip-rules", summary="List IP rules")
+async def list_ip_rules(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    rule_type: _Optional[str] = Query(None, pattern="^(allow|block)$"),
+    db: AsyncSession = Depends(get_db),
+    _: UserContext = Depends(require_admin),
+) -> dict[str, Any]:
+    """List all IP allow/block rules (admin only)."""
+    from app.services.ip_filter_service import IPFilterService
+
+    svc = IPFilterService(db)
+    skip = (page - 1) * per_page
+    rules = await svc.get_all_rules(skip=skip, limit=per_page, rule_type=rule_type)
+    total = await svc.count_rules(rule_type=rule_type)
+
+    import math
+    return {
+        "items": [
+            {
+                "id": r.id,
+                "cidr": r.cidr,
+                "rule_type": r.rule_type,
+                "reason": r.reason,
+                "expires_at": r.expires_at.isoformat() if r.expires_at else None,
+                "created_by": r.created_by,
+                "created": r.created.isoformat(),
+            }
+            for r in rules
+        ],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": math.ceil(total / per_page) if total > 0 else 0,
+    }
+
+
+@router.post("/ip-rules", status_code=201, summary="Create IP rule")
+async def create_ip_rule(
+    data: IPRuleCreate,
+    db: AsyncSession = Depends(get_db),
+    admin: UserContext = Depends(require_admin),
+) -> dict[str, Any]:
+    """Create an IP allow or block rule (admin only)."""
+    from app.services.ip_filter_service import IPFilterService
+
+    svc = IPFilterService(db)
+    rule = await svc.create_rule(
+        cidr=data.cidr,
+        rule_type=data.rule_type,
+        reason=data.reason,
+        expires_at=data.expires_at,
+        created_by=admin.user_id,
+    )
+    return {
+        "id": rule.id,
+        "cidr": rule.cidr,
+        "rule_type": rule.rule_type,
+        "reason": rule.reason,
+        "expires_at": rule.expires_at.isoformat() if rule.expires_at else None,
+        "created": rule.created.isoformat(),
+    }
+
+
+@router.delete("/ip-rules/{rule_id}", status_code=204, summary="Delete IP rule")
+async def delete_ip_rule(
+    rule_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: UserContext = Depends(require_admin),
+) -> None:
+    """Delete an IP rule (admin only)."""
+    from app.services.ip_filter_service import IPFilterService
+
+    svc = IPFilterService(db)
+    await svc.delete_rule(rule_id)
+
+
+# ===== Cron Job Management =====
+
+@router.get("/cron", summary="List cron jobs")
+async def list_cron_jobs(
+    _: UserContext = Depends(require_admin),
+) -> dict[str, Any]:
+    """List all scheduled cron tasks with their status (admin only)."""
+    from app.core.scheduler import get_scheduler
+    scheduler = get_scheduler()
+    tasks = scheduler.get_all_tasks()
+    return {"tasks": tasks, "total": len(tasks)}
+
+
+@router.post("/cron/{task_name}/trigger", summary="Manually trigger a cron job")
+async def trigger_cron_job(
+    task_name: str,
+    _: UserContext = Depends(require_admin),
+) -> dict[str, Any]:
+    """Manually trigger a cron job by name (admin only)."""
+    from app.core.scheduler import get_scheduler
+    from app.core.exceptions import NotFoundException
+
+    scheduler = get_scheduler()
+    found = await scheduler.trigger_task(task_name)
+    if not found:
+        raise NotFoundException(f"Cron job '{task_name}' not found")
+    return {"message": f"Task '{task_name}' triggered successfully"}

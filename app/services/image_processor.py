@@ -367,6 +367,119 @@ class ImageProcessor:
             raise ValueError(f"Failed to optimize image: {str(e)}") from e
 
     @staticmethod
+    def parse_thumb_spec(spec: str) -> tuple[int, int, str]:
+        """
+        Parse a thumb spec string like '300x200', '300x200f', '0x200', '300x0'.
+
+        Modifiers:
+            (none) = center crop to exact dimensions
+            f      = fit (resize preserving aspect ratio, no crop)
+            t      = top crop
+            b      = bottom crop
+            0xH    = resize proportionally to height H
+            Wx0    = resize proportionally to width W
+
+        Returns:
+            (width, height, mode) where mode is 'crop'|'fit'|'top'|'bottom'
+
+        Raises:
+            ValueError: If spec format is invalid
+        """
+        import re
+        m = re.fullmatch(r"(\d+)x(\d+)([fbt]?)", spec.strip().lower())
+        if not m:
+            raise ValueError(f"Invalid thumb spec '{spec}'. Expected format: WxH, WxHf, WxHt, WxHb")
+        width, height, modifier = int(m.group(1)), int(m.group(2)), m.group(3)
+        if width == 0 and height == 0:
+            raise ValueError("At least one dimension must be non-zero")
+        mode_map = {"": "crop", "f": "fit", "t": "top", "b": "bottom"}
+        return width, height, mode_map[modifier]
+
+    @staticmethod
+    async def generate_thumb_on_demand(
+        image_data: bytes,
+        width: int,
+        height: int,
+        mode: str = "crop",
+        quality: int = 85,
+    ) -> bytes:
+        """
+        Generate a thumbnail with the requested dimensions and crop mode.
+
+        Args:
+            image_data: Source image bytes
+            width: Target width (0 = auto from aspect ratio)
+            height: Target height (0 = auto from aspect ratio)
+            mode: 'crop' (center), 'fit' (letterbox), 'top', 'bottom'
+            quality: JPEG quality
+
+        Returns:
+            JPEG thumbnail bytes
+        """
+        try:
+            with Image.open(BytesIO(image_data)) as img:
+                # Ensure RGB for JPEG output
+                if img.mode in ("RGBA", "LA", "P"):
+                    bg = Image.new("RGB", img.size, (255, 255, 255))
+                    if img.mode == "P":
+                        img = img.convert("RGBA")
+                    bg.paste(img, mask=img.split()[-1] if img.mode in ("RGBA", "LA") else None)
+                    img = bg
+                elif img.mode != "RGB":
+                    img = img.convert("RGB")
+
+                orig_w, orig_h = img.size
+
+                # Handle proportional resize (one dimension is 0)
+                if width == 0:
+                    # Scale to exact height
+                    scale = height / orig_h
+                    width = max(1, int(orig_w * scale))
+                elif height == 0:
+                    # Scale to exact width
+                    scale = width / orig_w
+                    height = max(1, int(orig_h * scale))
+
+                if mode == "fit":
+                    # Resize preserving aspect ratio, pad with white to fill box
+                    img.thumbnail((width, height), Image.Resampling.LANCZOS)
+                    canvas = Image.new("RGB", (width, height), (255, 255, 255))
+                    offset = ((width - img.width) // 2, (height - img.height) // 2)
+                    canvas.paste(img, offset)
+                    result = canvas
+                elif mode == "top":
+                    # Resize width, crop from top
+                    scale = width / orig_w
+                    new_h = max(1, int(orig_h * scale))
+                    img = img.resize((width, new_h), Image.Resampling.LANCZOS)
+                    result = img.crop((0, 0, width, min(height, new_h)))
+                    if result.size != (width, height):
+                        canvas = Image.new("RGB", (width, height), (255, 255, 255))
+                        canvas.paste(result, (0, 0))
+                        result = canvas
+                elif mode == "bottom":
+                    # Resize width, crop from bottom
+                    scale = width / orig_w
+                    new_h = max(1, int(orig_h * scale))
+                    img = img.resize((width, new_h), Image.Resampling.LANCZOS)
+                    crop_top = max(0, new_h - height)
+                    result = img.crop((0, crop_top, width, new_h))
+                    if result.size != (width, height):
+                        canvas = Image.new("RGB", (width, height), (255, 255, 255))
+                        canvas.paste(result, (0, 0))
+                        result = canvas
+                else:
+                    # Default: center crop (ImageOps.fit)
+                    result = ImageOps.fit(img, (width, height), method=Image.Resampling.LANCZOS)
+
+                output = BytesIO()
+                result.save(output, format="JPEG", quality=quality, optimize=True)
+                return output.getvalue()
+
+        except Exception as e:
+            raise ValueError(f"Failed to generate thumbnail: {str(e)}") from e
+
+    @staticmethod
     async def convert_format(
         image_data: bytes,
         target_format: Literal["JPEG", "PNG", "WEBP", "GIF"],

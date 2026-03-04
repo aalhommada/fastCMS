@@ -135,6 +135,22 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_ENABLED: bool = True
 
+    # Account Lockout
+    ACCOUNT_LOCKOUT_ENABLED: bool = True
+    ACCOUNT_LOCKOUT_ATTEMPTS: int = 5       # Failed attempts before lockout
+    ACCOUNT_LOCKOUT_DURATION: int = 1800    # Lockout duration in seconds (30 min)
+
+    # IP Allowlist/Blocklist
+    IP_FILTER_ENABLED: bool = False  # Set to True to enable IP filtering middleware
+
+    # Password Policy
+    PASSWORD_MIN_LENGTH: int = 8
+    PASSWORD_REQUIRE_UPPERCASE: bool = True
+    PASSWORD_REQUIRE_LOWERCASE: bool = True
+    PASSWORD_REQUIRE_DIGIT: bool = True
+    PASSWORD_REQUIRE_SPECIAL: bool = False
+    PASSWORD_HISTORY_COUNT: int = 0         # 0 = disabled
+
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_PER_MINUTE: int = 100

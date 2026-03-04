@@ -27,6 +27,7 @@ class FileResponse(BaseModel):
     field_name: Optional[str] = None
     user_id: Optional[str] = None
     is_thumbnail: bool
+    protected: bool = False
     parent_file_id: Optional[str] = None
     created: datetime
     updated: datetime

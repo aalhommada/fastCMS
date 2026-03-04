@@ -87,6 +87,10 @@ class DynamicModelGenerator:
             column_type = SQLJSON
         elif field.type == FieldType.JSON:
             column_type = SQLJSON
+        elif field.type == FieldType.AUTODATE:
+            column_type = DateTime(timezone=True)
+            # Always nullable since we manage it in service layer
+            kwargs["nullable"] = True
         else:
             column_type = Text
 

@@ -4,7 +4,7 @@ Business logic service for authentication operations.
 
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.exceptions import (
     BadRequestException,
     ConflictException,
+    ForbiddenException,
     UnauthorizedException,
 )
 from app.core.logging import get_logger
@@ -20,6 +21,7 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
     hash_password,
+    validate_password_policy,
     verify_password,
     verify_token_type,
 )
@@ -85,6 +87,11 @@ class AuthService:
         if existing_user:
             raise ConflictException("User with this email already exists")
 
+        # Validate password policy
+        policy_errors = validate_password_policy(data.password)
+        if policy_errors:
+            raise BadRequestException(f"Password policy violation: {'; '.join(policy_errors)}")
+
         # Hash password
         password_hash = hash_password(data.password)
 
@@ -143,10 +150,45 @@ class AuthService:
         if not user:
             raise UnauthorizedException("Invalid email or password")
 
+        # Check account lockout
+        if settings.ACCOUNT_LOCKOUT_ENABLED and user.locked_until:
+            now = datetime.now(timezone.utc)
+            locked_until = user.locked_until
+            if locked_until.tzinfo is None:
+                locked_until = locked_until.replace(tzinfo=timezone.utc)
+            if locked_until > now:
+                remaining = int((locked_until - now).total_seconds())
+                raise ForbiddenException(
+                    f"Account locked due to too many failed attempts. "
+                    f"Try again in {remaining} seconds."
+                )
+            else:
+                # Lockout expired — reset counter
+                user.failed_login_attempts = 0
+                user.locked_until = None
+
         # Verify password
         if not verify_password(data.password, user.password_hash):
             logger.warning(f"Failed login attempt for: {data.email}")
+            if settings.ACCOUNT_LOCKOUT_ENABLED:
+                user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+                if user.failed_login_attempts >= settings.ACCOUNT_LOCKOUT_ATTEMPTS:
+                    user.locked_until = datetime.now(timezone.utc) + timedelta(
+                        seconds=settings.ACCOUNT_LOCKOUT_DURATION
+                    )
+                    logger.warning(
+                        f"Account locked for {data.email} after "
+                        f"{user.failed_login_attempts} failed attempts"
+                    )
+                await self.user_repo.update(user)
+                await self.db.commit()
             raise UnauthorizedException("Invalid email or password")
+
+        # Successful login — reset lockout counter
+        if settings.ACCOUNT_LOCKOUT_ENABLED and user.failed_login_attempts > 0:
+            user.failed_login_attempts = 0
+            user.locked_until = None
+            await self.user_repo.update(user)
 
         # Check if email is verified (optional - can be configured)
         # if not user.verified:
@@ -360,6 +402,17 @@ class AuthService:
         if not verify_password(data.old_password, user.password_hash):
             raise UnauthorizedException("Incorrect password")
 
+        # Validate password policy
+        policy_errors = validate_password_policy(data.new_password)
+        if policy_errors:
+            raise BadRequestException(f"Password policy violation: {'; '.join(policy_errors)}")
+
+        # Check password history
+        self._check_password_history(user, data.new_password)
+
+        # Store current hash in history before changing
+        self._update_password_history(user)
+
         # Hash new password
         user.password_hash = hash_password(data.new_password)
 
@@ -542,6 +595,15 @@ class AuthService:
         if not user:
             raise BadRequestException("User not found")
 
+        # Validate password policy
+        policy_errors = validate_password_policy(new_password)
+        if policy_errors:
+            raise BadRequestException(f"Password policy violation: {'; '.join(policy_errors)}")
+
+        # Check password history
+        self._check_password_history(user, new_password)
+        self._update_password_history(user)
+
         # Update password
         user.password_hash = hash_password(new_password)
 
@@ -636,6 +698,228 @@ class AuthService:
         await self.db.commit()
 
         logger.info(f"User account deleted: {user.email}")
+
+    async def request_email_change(self, user_id: str, new_email: str, password: str) -> None:
+        """
+        Initiate an email change. Sends a confirmation token to the NEW email.
+
+        Args:
+            user_id: Current user's ID
+            new_email: New email address the user wants to switch to
+            password: Current password for identity verification
+
+        Raises:
+            UnauthorizedException: If password is wrong
+            ConflictException: If new email is already in use
+            BadRequestException: If SMTP is not configured
+        """
+        user = await self.user_repo.get_by_id(user_id)
+        if not user:
+            raise UnauthorizedException("User not found")
+
+        if not verify_password(password, user.password_hash):
+            raise UnauthorizedException("Incorrect password")
+
+        if new_email.lower() == user.email.lower():
+            raise BadRequestException("New email must differ from current email")
+
+        existing = await self.user_repo.get_by_email(new_email)
+        if existing:
+            raise ConflictException("This email address is already in use")
+
+        if not settings.SMTP_ENABLED:
+            raise BadRequestException("Email service not configured")
+
+        token = EmailService.generate_token()
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+
+        verification_token = VerificationToken(
+            user_id=user.id,
+            token=token,
+            expires_at=expires_at.isoformat(),
+            token_type="email_change",
+            new_email=new_email,
+        )
+        await self.verification_repo.create(verification_token)
+        await self.db.commit()
+
+        await EmailService.send_email_change_confirmation(new_email, token, settings.BASE_URL)
+        logger.info(f"Email change requested for user {user.email} → {new_email}")
+
+    async def confirm_email_change(self, token: str) -> None:
+        """
+        Confirm email change using the token sent to the new address.
+
+        Args:
+            token: Email change confirmation token
+
+        Raises:
+            BadRequestException: If token is invalid, expired, or already used
+        """
+        token_record = await self.verification_repo.get_by_token(token)
+
+        if not token_record or token_record.token_type != "email_change":
+            raise BadRequestException("Invalid email change token")
+
+        if not await self.verification_repo.is_valid(token_record):
+            raise BadRequestException("Token has expired or already been used")
+
+        user = await self.user_repo.get_by_id(token_record.user_id)
+        if not user:
+            raise BadRequestException("User not found")
+
+        # Confirm new email is still available
+        new_email = token_record.new_email
+        if not new_email:
+            raise BadRequestException("Invalid token: missing new email")
+
+        existing = await self.user_repo.get_by_email(new_email)
+        if existing and existing.id != user.id:
+            raise ConflictException("This email address is already in use")
+
+        old_email = user.email
+        user.email = new_email
+        user.verified = True
+        await self.user_repo.update(user)
+
+        await self.verification_repo.mark_used(token_record)
+        await self.db.commit()
+
+        logger.info(f"Email changed: {old_email} → {new_email}")
+
+    async def request_otp(self, email: str) -> None:
+        """
+        Send a 6-digit OTP code to the given email for passwordless login.
+        Always returns success (prevents email enumeration).
+
+        Args:
+            email: Email address to send OTP to
+        """
+        import random
+
+        user = await self.user_repo.get_by_email(email)
+        if not user or not settings.SMTP_ENABLED:
+            logger.info(f"OTP requested for unknown/unconfigured email: {email}")
+            return
+
+        code = f"{random.randint(0, 999999):06d}"
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+
+        otp_token = VerificationToken(
+            user_id=user.id,
+            token=code,
+            expires_at=expires_at.isoformat(),
+            token_type="otp",
+        )
+        await self.verification_repo.create(otp_token)
+        await self.db.commit()
+
+        await EmailService.send_otp_email(email, code, settings.BASE_URL)
+        logger.info(f"OTP sent to: {email}")
+
+    async def auth_with_otp(
+        self,
+        email: str,
+        code: str,
+        user_agent: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> "AuthResponse":
+        """
+        Authenticate user with OTP code. Returns full AuthResponse on success.
+
+        Args:
+            email: User's email address
+            code: 6-digit OTP code
+            user_agent: User agent string
+            ip_address: Client IP address
+
+        Returns:
+            AuthResponse with user and tokens
+
+        Raises:
+            UnauthorizedException: If code is invalid or expired
+        """
+        user = await self.user_repo.get_by_email(email)
+        if not user:
+            raise UnauthorizedException("Invalid or expired OTP code")
+
+        # Find the most recent unused OTP for this user
+        token_record = await self.verification_repo.get_latest_otp(user.id, code)
+        if not token_record or not await self.verification_repo.is_valid(token_record):
+            raise UnauthorizedException("Invalid or expired OTP code")
+
+        # Mark token used
+        await self.verification_repo.mark_used(token_record)
+
+        # Auto-verify email on successful OTP login
+        if not user.verified:
+            user.verified = True
+            await self.user_repo.update(user)
+
+        await self.db.commit()
+
+        tokens = await self._create_tokens(user, user_agent, ip_address)
+        logger.info(f"OTP login successful for: {email}")
+
+        from app.schemas.auth import AuthResponse
+        return AuthResponse(user=self._to_user_response(user), token=tokens)
+
+    def _check_password_history(self, user: User, new_password: str) -> None:
+        """
+        Check that new password was not used recently.
+
+        Args:
+            user: User model
+            new_password: New plain text password
+
+        Raises:
+            BadRequestException: If password was used recently
+        """
+        import json
+        history_count = settings.PASSWORD_HISTORY_COUNT
+        if history_count == 0:
+            return
+
+        history: list[str] = []
+        if user.password_history:
+            try:
+                history = json.loads(user.password_history)
+            except (ValueError, TypeError):
+                history = []
+
+        # Also check current password
+        if verify_password(new_password, user.password_hash):
+            raise BadRequestException("New password must differ from current password")
+
+        for old_hash in history[:history_count]:
+            if verify_password(new_password, old_hash):
+                raise BadRequestException(
+                    f"Password was used recently. Choose a password not used in the last "
+                    f"{history_count} changes."
+                )
+
+    def _update_password_history(self, user: User) -> None:
+        """
+        Add current password hash to history before changing password.
+
+        Args:
+            user: User model (mutated in place)
+        """
+        import json
+        history_count = settings.PASSWORD_HISTORY_COUNT
+        if history_count == 0:
+            return
+
+        history: list[str] = []
+        if user.password_history:
+            try:
+                history = json.loads(user.password_history)
+            except (ValueError, TypeError):
+                history = []
+
+        # Prepend current hash and trim to limit
+        history = [user.password_hash] + history
+        user.password_history = json.dumps(history[:history_count])
 
     async def _send_verification_email(self, user: User) -> None:
         """

@@ -148,3 +148,86 @@ class EmailService:
             subject=f"Reset your {settings.APP_NAME} password",
             html_content=html_content,
         )
+
+    @staticmethod
+    async def send_email_change_confirmation(
+        new_email: str, token: str, base_url: str = "http://localhost:8000"
+    ) -> bool:
+        """
+        Send a confirmation link to the NEW email address for an email change request.
+
+        Args:
+            new_email: The new email address the user wants to switch to
+            token: Email change confirmation token
+            base_url: Base URL of the application
+
+        Returns:
+            True if email sent successfully
+        """
+        confirm_url = f"{base_url}/api/v1/auth/confirm-email-change?token={token}"
+
+        html_content = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2>Confirm Your New Email Address</h2>
+            <p>Someone requested to change their {settings.APP_NAME} account email to this address.</p>
+            <p>Click the button below to confirm and complete the change:</p>
+            <p style="margin: 30px 0;">
+                <a href="{confirm_url}"
+                   style="background-color: #059669; color: white; padding: 12px 24px;
+                          text-decoration: none; border-radius: 4px; display: inline-block;">
+                    Confirm Email Change
+                </a>
+            </p>
+            <p>Or copy and paste this link:</p>
+            <p style="word-break: break-all; color: #666;">{confirm_url}</p>
+            <p>This link will expire in 24 hours.</p>
+            <p>If you did not request this, you can safely ignore this email.</p>
+        </body>
+        </html>
+        """
+
+        return await EmailService.send_email(
+            to_email=new_email,
+            subject=f"Confirm your new {settings.APP_NAME} email address",
+            html_content=html_content,
+        )
+
+    @staticmethod
+    async def send_otp_email(
+        to_email: str, code: str, base_url: str = "http://localhost:8000"
+    ) -> bool:
+        """
+        Send a one-time password (OTP) code for passwordless login.
+
+        Args:
+            to_email: Recipient email address
+            code: 6-digit OTP code
+            base_url: Base URL (unused but kept for API consistency)
+
+        Returns:
+            True if email sent successfully
+        """
+        html_content = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2>Your One-Time Login Code</h2>
+            <p>Use the code below to sign in to your {settings.APP_NAME} account:</p>
+            <div style="margin: 30px 0; text-align: center;">
+                <div style="font-size: 48px; font-weight: bold; letter-spacing: 12px;
+                            color: #4F46E5; background: #EEF2FF; padding: 20px 40px;
+                            border-radius: 8px; display: inline-block;">
+                    {code}
+                </div>
+            </div>
+            <p>This code is valid for <strong>10 minutes</strong>.</p>
+            <p>If you did not request this code, you can safely ignore this email.</p>
+        </body>
+        </html>
+        """
+
+        return await EmailService.send_email(
+            to_email=to_email,
+            subject=f"Your {settings.APP_NAME} login code: {code}",
+            html_content=html_content,
+        )

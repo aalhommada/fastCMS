@@ -82,6 +82,13 @@ class Collection(BaseModel):
         default=None,
     )
 
+    # Manage rule for auth collections (governs admin-level access to user records)
+    manage_rule: Mapped[str] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
+    )
+
     # System collection flag (cannot be deleted)
     system: Mapped[bool] = mapped_column(
         Boolean,

@@ -5,18 +5,22 @@ import axios, { AxiosInstance } from 'axios';
 import { FastCMSConfig, AuthTokens } from './types';
 import { AuthService } from './services/auth';
 import { CollectionClient } from './services/collection';
+import { FilesService } from './services/files';
 import { StorageService } from './services/storage';
 import { SearchService } from './services/search';
 import { RealtimeService } from './services/realtime';
+import { BatchService } from './services/batch';
 
 export class FastCMS {
   private axiosInstance: AxiosInstance;
   private _tokens: AuthTokens | null = null;
 
   public auth: AuthService;
+  public files: FilesService;
   public storage: StorageService;
   public search: SearchService;
   public realtime: RealtimeService;
+  public batch: BatchService;
 
   constructor(private config: FastCMSConfig) {
     this.axiosInstance = axios.create({
@@ -70,9 +74,11 @@ export class FastCMS {
     );
 
     this.auth = new AuthService(this);
+    this.files = new FilesService(this);
     this.storage = new StorageService(this);
     this.search = new SearchService(this);
     this.realtime = new RealtimeService(this);
+    this.batch = new BatchService(this);
   }
 
   /**
@@ -87,6 +93,13 @@ export class FastCMS {
    */
   getAxios(): AxiosInstance {
     return this.axiosInstance;
+  }
+
+  /**
+   * Get client configuration
+   */
+  getConfig(): FastCMSConfig {
+    return this.config;
   }
 
   /**

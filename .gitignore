@@ -57,10 +57,31 @@ alembic.ini.bak
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 *.cover
 .hypothesis/
 .tox/
+
+# TypeScript / Node.js SDK
+sdk/typescript/node_modules/
+sdk/typescript/dist/
+sdk/typescript/.tsbuildinfo
+
+# Python SDK build artifacts
+sdk/python/dist/
+sdk/python/*.egg-info/
+sdk/python/.ruff_cache/
+
+# Hooks user scripts (user-specific, exclude from repo except example)
+hooks/*.py
+!hooks/example.py
+
+# Thumbnail cache
+data/files/thumbs/
+
+# IP filter / rate limit state (ephemeral)
+data/*.json
 
 # Logs
 *.log

@@ -5,7 +5,7 @@ Pydantic schemas for authentication endpoints.
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 class UserRegister(BaseModel):
@@ -242,3 +242,45 @@ class TwoFactorBackupCodesResponse(BaseModel):
 
     backup_codes: list[str]
     message: str
+
+
+# ===== Email Change Schemas =====
+
+class EmailChangeRequest(BaseModel):
+    """Request to initiate an email address change."""
+
+    new_email: EmailStr = Field(..., description="New email address to change to")
+    password: str = Field(..., description="Current password to confirm identity")
+
+
+class EmailChangeConfirm(BaseModel):
+    """Confirm email change with token sent to new address."""
+
+    token: str = Field(..., description="Token received at the new email address")
+
+
+# ===== OTP (One-Time Password) Auth Schemas =====
+
+class OTPRequest(BaseModel):
+    """Request a one-time password sent via email."""
+
+    email: EmailStr = Field(..., description="Email address to send OTP to")
+
+
+class OTPVerify(BaseModel):
+    """Verify OTP and complete passwordless authentication."""
+
+    email: EmailStr = Field(..., description="Email address")
+    code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
+
+
+# ===== Impersonation Schema =====
+
+class ImpersonationResponse(BaseModel):
+    """Response for user impersonation (admin only). No refresh token issued."""
+
+    access_token: str = Field(..., description="Short-lived access token for the target user")
+    token_type: str = "bearer"
+    expires_in: int = Field(..., description="Token lifetime in seconds")
+    impersonated_user_id: str
+    message: str = "Impersonation token issued. This token cannot be refreshed."

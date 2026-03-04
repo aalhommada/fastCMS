@@ -62,6 +62,44 @@ class CronScheduler:
             # Sleep for 60 seconds
             await asyncio.sleep(60)
 
+    def get_all_tasks(self) -> list[dict]:
+        """Return task metadata (excludes the actual function reference)."""
+        result = []
+        now = datetime.now()
+        for task in self.tasks:
+            try:
+                cron = croniter(task["cron"], now)
+                next_run = cron.get_next(datetime).isoformat()
+            except Exception:
+                next_run = None
+            result.append({
+                "name": task["name"],
+                "cron": task["cron"],
+                "last_run": task["last_run"].isoformat() if task["last_run"] else None,
+                "next_run": next_run,
+                "status": "running" if self._running else "stopped",
+            })
+        return result
+
+    async def trigger_task(self, name: str) -> bool:
+        """
+        Manually trigger a task by name (fire-and-forget).
+
+        Returns:
+            True if task was found and triggered, False otherwise
+        """
+        for task in self.tasks:
+            if task["name"] == name:
+                try:
+                    logger.info(f"Manually triggering task: {name}")
+                    await task["func"]()
+                    task["last_run"] = datetime.now()
+                    return True
+                except Exception as e:
+                    logger.error(f"Error in manual task trigger {name}: {e}")
+                    raise
+        return False
+
     def start(self) -> None:
         """Start scheduler in background"""
         if not self._running:

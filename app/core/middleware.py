@@ -4,6 +4,7 @@ import uuid
 from typing import Callable, Optional
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 from app.core.logging import get_logger
 from app.core.readonly import is_readonly, get_readonly_reason
 from app.core.config import settings
@@ -57,6 +58,18 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                     )
         except Exception as e:
             logger.error(f"Failed to log request: {str(e)}")
+
+        # Record metrics
+        try:
+            from app.core.metrics import metrics
+            method = request.method
+            status_code = str(response.status_code)
+            metrics.inc("fastcms_http_requests_total", labels={"method": method, "status": status_code})
+            metrics.observe("fastcms_http_request_duration_ms", duration_ms, labels={"method": method})
+            if response.status_code >= 500:
+                metrics.inc("fastcms_http_errors_total", labels={"method": method, "status": status_code})
+        except Exception:
+            pass
 
         # Add request ID to response headers
         response.headers["X-Request-ID"] = request_id
@@ -183,3 +196,55 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 response.headers["Pragma"] = "no-cache"
 
         return response
+
+
+class IPFilterMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware that checks the client IP against allow/block rules stored in the DB.
+
+    Block rules take precedence.  If no block rules match, the request proceeds.
+    Allow rules are purely additive documentation (useful for whitelists in conjunction
+    with future IP-restricted API key features).
+    """
+
+    # Paths exempt from IP filtering (health checks, etc.)
+    EXEMPT_PATHS = {"/health", "/api/v1/health"}
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Skip IP filtering if disabled or for exempt paths
+        if not settings.IP_FILTER_ENABLED:
+            return await call_next(request)
+
+        if request.url.path in self.EXEMPT_PATHS:
+            return await call_next(request)
+
+        # Extract client IP
+        client_ip = (
+            request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+            or request.headers.get("x-real-ip")
+            or (request.client.host if request.client else None)
+        )
+
+        if not client_ip:
+            return await call_next(request)
+
+        # Check against rules — requires a DB session
+        try:
+            from app.db.session import get_async_session
+            from app.services.ip_filter_service import IPFilterService
+
+            async with get_async_session() as db:
+                svc = IPFilterService(db)
+                blocked, reason = await svc.is_blocked(client_ip)
+
+            if blocked:
+                logger.warning(f"Blocked IP: {client_ip} — {reason}")
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": f"Access denied: {reason or 'IP blocked'}"},
+                )
+        except Exception as e:
+            # Don't break the app if IP filter check fails
+            logger.error(f"IP filter check failed: {e}")
+
+        return await call_next(request)

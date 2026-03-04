@@ -58,6 +58,7 @@ class AccessContext:
         context: str = "default",
         collection_data: Optional[Dict[str, list]] = None,
         db_session: Optional[Any] = None,
+        old_record_data: Optional[dict[str, Any]] = None,
     ):
         self.user_id = user_id
         self.user_role = user_role
@@ -71,6 +72,8 @@ class AccessContext:
         self.collection_data = collection_data or {}
         # Database session for async @collection lookups
         self.db_session = db_session
+        # Previous record state for :changed modifier support
+        self.old_record_data: dict[str, Any] = old_record_data or {}
 
     @property
     def is_authenticated(self) -> bool:
@@ -85,10 +88,12 @@ class AccessControlEngine:
     """Engine for evaluating access control rules."""
 
     def __init__(self):
-        # Pattern for @request and @record tokens
-        self.token_pattern = re.compile(r"@(request|record)\.([a-zA-Z_][a-zA-Z0-9_.]*)")
+        # Pattern for @request and @record tokens (with optional :changed modifier)
+        self.token_pattern = re.compile(r"@(request|record)\.([a-zA-Z_][a-zA-Z0-9_.]*)(?::(\w+))?")
         # Pattern for @collection tokens: @collection.collection_name.field
-        self.collection_pattern = re.compile(r"@collection\.([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_.]*)")
+        self.collection_pattern = re.compile(r"@collection\.([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_.]*)(?::(\w+))?")
+        # Pattern for bare field:changed tokens (not prefixed with @record)
+        self.changed_field_pattern = re.compile(r"\b([a-zA-Z_][a-zA-Z0-9_]*):changed\b")
 
     def evaluate(self, rule: Optional[str], context: AccessContext) -> bool:
         """
@@ -223,9 +228,28 @@ class AccessControlEngine:
     def _replace_tokens(self, rule: str, context: AccessContext) -> str:
         """Replace @request and @record tokens with actual values."""
 
+        # First handle bare field:changed patterns (e.g., status:changed = true)
+        def replace_changed_field(match: re.Match) -> str:
+            field = match.group(1)
+            old_val = context.old_record_data.get(field)
+            new_val = context.record_data.get(field)
+            changed = old_val != new_val
+            return "True" if changed else "False"
+
+        rule = self.changed_field_pattern.sub(replace_changed_field, rule)
+
         def replace_token(match: re.Match) -> str:
             scope = match.group(1)  # request or record
             path = match.group(2)  # e.g., auth.id, user_id, data.title
+            modifier = match.group(3)  # optional modifier like "changed"
+
+            if modifier == "changed":
+                # :changed — compare old vs. new value
+                field = path.split(".")[-1]
+                old_val = context.old_record_data.get(field)
+                new_val = context.record_data.get(field)
+                changed = old_val != new_val
+                return "True" if changed else "False"
 
             if scope == "request":
                 return self._get_request_value(path, context)

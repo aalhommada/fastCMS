@@ -11,7 +11,12 @@ from app.core.dependencies import require_auth
 from app.db.session import get_db
 from app.schemas.auth import (
     AuthResponse,
+    EmailChangeConfirm,
+    EmailChangeRequest,
     EmailVerification,
+    ImpersonationResponse,
+    OTPRequest,
+    OTPVerify,
     PasswordChange,
     PasswordReset,
     PasswordResetRequest,
@@ -497,3 +502,70 @@ async def regenerate_backup_codes(
     """
     service = TwoFactorService(db)
     return await service.regenerate_backup_codes(user_id, data.code)
+
+
+# ===== Email Change Endpoints =====
+
+@router.post(
+    "/request-email-change",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Request email address change",
+    description="Initiate an email change. A confirmation link is sent to the NEW email.",
+)
+async def request_email_change(
+    data: EmailChangeRequest,
+    user_id: str = Depends(require_auth),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Request a change of email address. Requires current password confirmation."""
+    service = AuthService(db)
+    await service.request_email_change(user_id, str(data.new_email), data.password)
+
+
+@router.post(
+    "/confirm-email-change",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Confirm email address change",
+    description="Complete the email change using the token sent to the new address.",
+)
+async def confirm_email_change(
+    data: EmailChangeConfirm,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Confirm email change with the token received at the new email address."""
+    service = AuthService(db)
+    await service.confirm_email_change(data.token)
+
+
+# ===== OTP (Passwordless) Auth Endpoints =====
+
+@router.post(
+    "/request-otp",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Request OTP for passwordless login",
+    description="Send a 6-digit one-time code to the user's email. Always returns 204 (prevents enumeration).",
+)
+async def request_otp(
+    data: OTPRequest,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Send a one-time password to the given email address."""
+    service = AuthService(db)
+    await service.request_otp(str(data.email))
+
+
+@router.post(
+    "/auth-with-otp",
+    response_model=AuthResponse,
+    summary="Authenticate with OTP code",
+    description="Exchange a valid OTP code for access + refresh tokens.",
+)
+async def auth_with_otp(
+    data: OTPVerify,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> AuthResponse:
+    """Verify OTP and return full auth response."""
+    user_agent, ip_address = get_client_info(request)
+    service = AuthService(db)
+    return await service.auth_with_otp(str(data.email), data.code, user_agent, ip_address)

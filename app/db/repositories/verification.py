@@ -52,6 +52,19 @@ class VerificationTokenRepository:
         expires_at = datetime.fromisoformat(token.expires_at)
         return expires_at > datetime.now(timezone.utc)
 
+    async def get_latest_otp(self, user_id: str, code: str) -> Optional[VerificationToken]:
+        """Get the latest valid OTP token for a user matching the given code."""
+        stmt = (
+            select(VerificationToken)
+            .where(VerificationToken.user_id == user_id)
+            .where(VerificationToken.token == code)
+            .where(VerificationToken.token_type == "otp")
+            .where(VerificationToken.used == False)
+            .order_by(VerificationToken.created.desc())
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def delete_for_user(self, user_id: str) -> None:
         """Delete all verification tokens for a user."""
         stmt = select(VerificationToken).where(VerificationToken.user_id == user_id)

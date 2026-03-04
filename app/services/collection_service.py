@@ -371,6 +371,48 @@ class CollectionService:
             )
         )
 
+    async def truncate_collection(self, collection_name: str) -> dict:
+        """
+        Delete all records from a collection without dropping the table.
+
+        Args:
+            collection_name: Collection name
+
+        Returns:
+            Dict with deleted_count
+
+        Raises:
+            NotFoundException: If collection not found
+            BadRequestException: If collection is a view or system collection
+        """
+        from sqlalchemy import text, delete as sa_delete
+
+        collection = await self.repo.get_by_name(collection_name)
+        if not collection:
+            raise NotFoundException(f"Collection '{collection_name}' not found")
+
+        if collection.system:
+            raise BadRequestException("Cannot truncate a system collection")
+
+        if collection.type == "view":
+            raise BadRequestException("Cannot truncate a view collection")
+
+        # Use dynamic model to delete all records
+        model = DynamicModelGenerator.get_model(collection_name)
+        if model is None:
+            model = await DynamicModelGenerator.get_or_create_model(collection_name, self.db)
+
+        if model is None:
+            raise NotFoundException(f"No table found for collection '{collection_name}'")
+
+        result = await self.db.execute(sa_delete(model))
+        await self.db.commit()
+
+        deleted_count = result.rowcount
+        logger.info(f"Collection '{collection_name}' truncated — {deleted_count} records deleted")
+
+        return {"deleted_count": deleted_count, "collection": collection_name}
+
     async def _create_view(self, view_name: str, query: str) -> None:
         """
         Create a SQL view.

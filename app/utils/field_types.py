@@ -24,6 +24,7 @@ class FieldType(str, Enum):
     JSON = "json"
     EDITOR = "editor"
     GEOPOINT = "geopoint"  # Geographic coordinates (lat, lng)
+    AUTODATE = "autodate"  # Auto-set timestamp on create and/or update
 
 
 class FieldValidation(BaseModel):
@@ -153,6 +154,13 @@ class GeoPointOptions(BaseModel):
     max_lng: float = Field(default=180.0, ge=-180.0, le=180.0)
 
 
+class AutodateOptions(BaseModel):
+    """Options for Autodate fields."""
+
+    on_create: bool = Field(default=True, description="Set timestamp when record is created")
+    on_update: bool = Field(default=True, description="Update timestamp when record is updated")
+
+
 class FieldSchema(BaseModel):
     """Complete schema definition for a field."""
 
@@ -165,6 +173,7 @@ class FieldSchema(BaseModel):
     select: Optional[SelectOptions] = None
     file: Optional[FileOptions] = None
     geopoint: Optional[GeoPointOptions] = None
+    autodate: Optional[AutodateOptions] = None
 
     # Display options
     label: Optional[str] = None
@@ -220,6 +229,7 @@ FIELD_TYPE_SQL_MAP: Dict[FieldType, str] = {
     FieldType.JSON: "JSON",
     FieldType.EDITOR: "TEXT",
     FieldType.GEOPOINT: "JSON",  # Stores as {"lat": float, "lng": float, "alt": float?}
+    FieldType.AUTODATE: "TIMESTAMP",  # Auto-managed datetime
 }
 
 
@@ -238,6 +248,7 @@ FIELD_TYPE_PYTHON_MAP: Dict[FieldType, type] = {
     FieldType.JSON: (dict, list),
     FieldType.EDITOR: str,
     FieldType.GEOPOINT: dict,  # {"lat": float, "lng": float, "alt": float?}
+    FieldType.AUTODATE: str,  # ISO format string (auto-managed; user input ignored)
 }
 
 

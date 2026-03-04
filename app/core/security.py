@@ -132,6 +132,106 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def validate_password_policy(password: str) -> list[str]:
+    """
+    Validate password against configured policy settings.
+
+    Args:
+        password: Plain text password to validate
+
+    Returns:
+        List of validation error messages (empty = password is valid)
+    """
+    errors: list[str] = []
+
+    if len(password) < settings.PASSWORD_MIN_LENGTH:
+        errors.append(f"Password must be at least {settings.PASSWORD_MIN_LENGTH} characters long")
+
+    if settings.PASSWORD_REQUIRE_UPPERCASE and not any(c.isupper() for c in password):
+        errors.append("Password must contain at least one uppercase letter")
+
+    if settings.PASSWORD_REQUIRE_LOWERCASE and not any(c.islower() for c in password):
+        errors.append("Password must contain at least one lowercase letter")
+
+    if settings.PASSWORD_REQUIRE_DIGIT and not any(c.isdigit() for c in password):
+        errors.append("Password must contain at least one digit")
+
+    if settings.PASSWORD_REQUIRE_SPECIAL and not any(
+        c in "!@#$%^&*()_+-=[]{}|;':\",./<>?" for c in password
+    ):
+        errors.append("Password must contain at least one special character (!@#$%^&*...)")
+
+    return errors
+
+
+def create_impersonation_token(user_id: str, impersonator_id: str, duration_seconds: int = 3600) -> str:
+    """
+    Create a short-lived impersonation token for a user (admin only).
+    The token is non-renewable — no refresh token is issued.
+
+    Args:
+        user_id: The user being impersonated
+        impersonator_id: The admin performing the impersonation
+        duration_seconds: How long the token is valid (default 1 hour)
+
+    Returns:
+        Encoded JWT access token with impersonation flag
+    """
+    expire = datetime.now(timezone.utc) + timedelta(seconds=duration_seconds)
+    payload = {
+        "sub": user_id,
+        "impersonated": True,
+        "impersonated_by": impersonator_id,
+        "exp": expire,
+        "type": "access",
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def generate_file_token(user_id: str, file_id: str, duration_seconds: int = 120) -> str:
+    """
+    Generate a short-lived JWT for protected file access.
+
+    Args:
+        user_id: User requesting access
+        file_id: The file to grant access to
+        duration_seconds: Token lifetime (default 2 minutes)
+
+    Returns:
+        Signed JWT string
+    """
+    expire = datetime.now(timezone.utc) + timedelta(seconds=duration_seconds)
+    payload = {
+        "sub": user_id,
+        "file_id": file_id,
+        "type": "file_access",
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def verify_file_token(token: str, file_id: str) -> Optional[str]:
+    """
+    Verify a file access token and return the user_id on success.
+
+    Args:
+        token: JWT token string
+        file_id: File ID that must match the token's file_id claim
+
+    Returns:
+        user_id if valid, None otherwise
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("type") != "file_access":
+            return None
+        if payload.get("file_id") != file_id:
+            return None
+        return payload.get("sub")
+    except JWTError:
+        return None
+
+
 def verify_token_type(payload: Dict[str, Any], expected_type: str) -> bool:
     """
     Verify that a token payload has the expected type.

@@ -103,18 +103,115 @@ class FileService:
 
         return self._to_response(file)
 
-    async def get_file_content(self, file_id: str) -> tuple[Path, str, str]:
-        """Get file content for download."""
+    async def get_file_content(
+        self,
+        file_id: str,
+        token: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> tuple[Path, str, str]:
+        """
+        Get file content for download.
+
+        For protected files, either a valid file token or an authenticated user_id is required.
+        """
+        from app.core.security import verify_file_token
+        from app.core.exceptions import ForbiddenException
+
         file = await self.repo.get_by_id(file_id)
         if not file:
             raise NotFoundException(f"File '{file_id}' not found")
 
-        file_path = self.storage_path / file.storage_path
+        if file.protected:
+            # Allow if a valid short-lived file token is provided
+            if token:
+                authorized_user = verify_file_token(token, file_id)
+                if not authorized_user:
+                    raise ForbiddenException("Invalid or expired file token")
+            elif user_id:
+                pass  # Authenticated users may access (rule-based enforcement can be added later)
+            else:
+                raise ForbiddenException("This file is protected. Provide a valid file token.")
 
+        file_path = self.storage_path / file.storage_path
         if not file_path.exists():
-            raise NotFoundException(f"File content not found on disk")
+            raise NotFoundException("File content not found on disk")
 
         return file_path, file.original_filename, file.mime_type
+
+    async def create_file_token(self, file_id: str, user_id: str) -> str:
+        """Generate a short-lived access token for a protected file."""
+        from app.core.security import generate_file_token
+
+        file = await self.repo.get_by_id(file_id)
+        if not file:
+            raise NotFoundException(f"File '{file_id}' not found")
+
+        return generate_file_token(user_id, file_id)
+
+    async def set_file_protected(self, file_id: str, protected: bool) -> None:
+        """Mark a file as protected or unprotected."""
+        file = await self.repo.get_by_id(file_id)
+        if not file:
+            raise NotFoundException(f"File '{file_id}' not found")
+
+        file.protected = protected
+        await self.repo.update(file)
+
+    async def get_file_thumb(self, file_id: str, thumb_spec: str) -> tuple[Path, str]:
+        """
+        Return path to a on-demand thumbnail, generating and caching it if needed.
+
+        Args:
+            file_id: File ID
+            thumb_spec: Spec string, e.g. '300x200', '300x200f', '0x150'
+
+        Returns:
+            (thumb_path, mime_type) — always JPEG for on-demand thumbs
+        """
+        from app.services.image_processor import ImageProcessor
+
+        file = await self.repo.get_by_id(file_id)
+        if not file:
+            raise NotFoundException(f"File '{file_id}' not found")
+
+        if not ImageProcessor.is_image(file.mime_type):
+            raise BadRequestException("Thumbnail generation is only supported for image files")
+
+        # Parse spec — raises ValueError on bad input
+        try:
+            width, height, mode = ImageProcessor.parse_thumb_spec(thumb_spec)
+        except ValueError as e:
+            raise BadRequestException(str(e))
+
+        # Cache location: {storage_path}/thumbs/{spec}/{original_stem}.jpg
+        safe_spec = thumb_spec.lower().replace(" ", "")
+        original_path = self.storage_path / file.storage_path
+        stem = Path(file.original_filename).stem
+        cache_dir = self.storage_path / "thumbs" / safe_spec
+        cache_path = cache_dir / f"{stem}_{file.id}.jpg"
+
+        if cache_path.exists():
+            return cache_path, "image/jpeg"
+
+        # Read original
+        if not original_path.exists():
+            raise NotFoundException("File content not found on disk")
+
+        image_data = original_path.read_bytes()
+
+        # Generate
+        thumb_bytes = await ImageProcessor.generate_thumb_on_demand(
+            image_data=image_data,
+            width=width,
+            height=height,
+            mode=mode,
+        )
+
+        # Save to cache
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path.write_bytes(thumb_bytes)
+
+        return cache_path, "image/jpeg"
 
     async def list_files(
         self,

@@ -56,6 +56,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from app.core.websocket_manager import connection_manager
     await connection_manager.start()
 
+    # Load user-defined hooks from ./hooks/
+    from app.core.hook_loader import load_hooks
+    load_hooks("./hooks")
+
     logger.info(f"{settings.APP_NAME} started successfully")
 
     yield
@@ -266,6 +270,7 @@ from app.api.v1 import (
     health, logs, oauth, oauth_providers, realtime, records, search,
     settings as settings_router, setup, views, webhooks
 )
+from app.api.v1.metrics_api import router as metrics_router
 from fastapi.responses import RedirectResponse
 
 app.include_router(health.router, tags=["Health"])
@@ -289,6 +294,7 @@ app.include_router(backups.router, prefix="/api/v1", tags=["Backups"])
 app.include_router(realtime.router, prefix="/api/v1", tags=["Real-time"])
 app.include_router(webhooks.router, prefix="/api/v1", tags=["Webhooks"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
+app.include_router(metrics_router, prefix="/api/v1/admin", tags=["Metrics"])
 app.include_router(admin_routes.router, prefix="/admin", tags=["Admin UI"])
 
 

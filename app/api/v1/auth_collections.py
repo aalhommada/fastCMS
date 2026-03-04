@@ -164,16 +164,21 @@ async def login_to_auth_collection(
     record_repo = RecordRepository(db, collection_name)
     model = await record_repo._get_model()
 
-    # Find user by email
+    # Determine the identity field (default: "email", configurable via collection options)
+    identity_field = collection.options.get("identity_field", "email") if collection.options else "email"
+    if not hasattr(model, identity_field):
+        identity_field = "email"  # Fallback to email if field doesn't exist
+
+    # Find user by identity field
     result = await db.execute(
-        select(model).where(model.email == credentials.email)
+        select(model).where(getattr(model, identity_field) == credentials.email)
     )
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(credentials.password, user.password):
         raise HTTPException(
             status_code=401,
-            detail="Invalid email or password"
+            detail=f"Invalid {identity_field} or password"
         )
 
     # Generate token
