@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Cron Jobs{% endblock %}
+
+{% block content %}
+<div x-data="cronPage()" x-init="init()" class="p-6 space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Cron Jobs</h1>
+      <p class="mt-1 text-sm text-gray-500">
+        Scheduled background tasks registered at startup. Use
+        <code class="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">get_scheduler().add_task()</code>
+        to register tasks programmatically.
+      </p>
+    </div>
+    <button
+      @click="loadTasks()"
+      class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+    >
+      <i class="fas fa-sync-alt mr-2" :class="loading && 'animate-spin'"></i> Refresh
+    </button>
+  </div>
+
+  <!-- Scheduler status badge -->
+  <div x-show="tasks.length > 0" class="flex items-center space-x-2">
+    <span
+      class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+      :class="tasks[0]?.status === 'running' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'"
+    >
+      <i class="fas fa-circle mr-2 text-xs" :class="tasks[0]?.status === 'running' ? 'text-green-500' : 'text-gray-400'"></i>
+      <span x-text="tasks[0]?.status === 'running' ? 'Scheduler running' : 'Scheduler stopped'"></span>
+    </span>
+    <span class="text-sm text-gray-500" x-text="`${tasks.length} task${tasks.length !== 1 ? 's' : ''} registered`"></span>
+  </div>
+
+  <!-- Task list -->
+  <div x-show="!loading && tasks.length > 0" class="space-y-4">
+    <template x-for="task in tasks" :key="task.name">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4">
+          <div class="flex items-center space-x-4">
+            <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-clock text-orange-600"></i>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-900" x-text="task.name"></p>
+              <p class="text-xs text-gray-500 font-mono mt-0.5" x-text="task.cron"></p>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-6">
+            <!-- Next run -->
+            <div class="text-right hidden sm:block">
+              <p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Next run</p>
+              <p class="text-sm text-gray-700 font-mono" x-text="formatTime(task.next_run)"></p>
+            </div>
+            <!-- Last run -->
+            <div class="text-right hidden md:block">
+              <p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Last run</p>
+              <p class="text-sm text-gray-700 font-mono" x-text="task.last_run ? formatTime(task.last_run) : 'Never'"></p>
+            </div>
+            <!-- Trigger button -->
+            <button
+              @click="triggerTask(task.name)"
+              :disabled="triggering === task.name"
+              class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+            >
+              <i class="fas fa-play mr-1.5" :class="triggering === task.name && 'animate-pulse'"></i>
+              <span x-text="triggering === task.name ? 'Running…' : 'Run now'"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Empty state -->
+  <div x-show="!loading && tasks.length === 0" class="bg-white rounded-xl shadow-sm border border-dashed border-gray-300 p-12 text-center">
+    <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <i class="fas fa-clock text-gray-400 text-2xl"></i>
+    </div>
+    <h3 class="text-base font-semibold text-gray-900 mb-1">No cron jobs registered</h3>
+    <p class="text-sm text-gray-500 mb-4 max-w-sm mx-auto">
+      Register tasks in your application startup or hooks using the scheduler API.
+    </p>
+    <div class="bg-gray-50 rounded-lg p-4 text-left text-xs font-mono text-gray-600 max-w-md mx-auto">
+      <p class="text-gray-400 mb-1"># In main.py or a hook file</p>
+      <p>from app.core.scheduler import get_scheduler</p>
+      <p>&nbsp;</p>
+      <p>get_scheduler().add_task(</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;"cleanup", "0 2 * * *", cleanup_fn</p>
+      <p>)</p>
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div x-show="loading" class="flex justify-center py-12">
+    <i class="fas fa-spinner animate-spin text-2xl text-gray-400"></i>
+  </div>
+
+  <!-- Reference card -->
+  <div class="bg-orange-50 border border-orange-100 rounded-xl p-5">
+    <h3 class="text-sm font-semibold text-orange-900 mb-3">
+      <i class="fas fa-book mr-2"></i>Cron Expression Reference
+    </h3>
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs font-mono">
+      <div class="bg-white rounded-lg px-3 py-2 border border-orange-100">
+        <p class="text-orange-700 font-sans font-semibold mb-1">Every minute</p>
+        <p class="text-gray-700">* * * * *</p>
+      </div>
+      <div class="bg-white rounded-lg px-3 py-2 border border-orange-100">
+        <p class="text-orange-700 font-sans font-semibold mb-1">Every hour</p>
+        <p class="text-gray-700">0 * * * *</p>
+      </div>
+      <div class="bg-white rounded-lg px-3 py-2 border border-orange-100">
+        <p class="text-orange-700 font-sans font-semibold mb-1">Daily at 2 AM</p>
+        <p class="text-gray-700">0 2 * * *</p>
+      </div>
+      <div class="bg-white rounded-lg px-3 py-2 border border-orange-100">
+        <p class="text-orange-700 font-sans font-semibold mb-1">Every Sunday midnight</p>
+        <p class="text-gray-700">0 0 * * 0</p>
+      </div>
+      <div class="bg-white rounded-lg px-3 py-2 border border-orange-100">
+        <p class="text-orange-700 font-sans font-semibold mb-1">1st of each month</p>
+        <p class="text-gray-700">0 0 1 * *</p>
+      </div>
+      <div class="bg-white rounded-lg px-3 py-2 border border-orange-100">
+        <p class="text-orange-700 font-sans font-semibold mb-1">Every 15 minutes</p>
+        <p class="text-gray-700">*/15 * * * *</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div
+    x-show="toast.show"
+    x-transition
+    class="fixed bottom-4 right-4 bg-white shadow-lg rounded-lg px-4 py-3 max-w-sm z-50"
+  >
+    <div class="flex items-center">
+      <i
+        class="mr-3"
+        :class="{
+          'fas fa-check-circle text-green-500': toast.type === 'success',
+          'fas fa-exclamation-circle text-red-500': toast.type === 'error',
+          'fas fa-info-circle text-blue-500': toast.type === 'info'
+        }"
+      ></i>
+      <p class="text-sm font-medium text-gray-900" x-text="toast.message"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+  function cronPage() {
+    return {
+      tasks: [],
+      loading: true,
+      triggering: null,
+      toast: { show: false, message: '', type: 'info' },
+
+      async init() {
+        await this.loadTasks();
+      },
+
+      async loadTasks() {
+        this.loading = true;
+        try {
+          const data = await apiRequest('/admin/cron');
+          this.tasks = data.tasks || [];
+        } catch (e) {
+          this.showToast('Failed to load cron jobs', 'error');
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async triggerTask(name) {
+        this.triggering = name;
+        try {
+          await apiRequest(`/admin/cron/${encodeURIComponent(name)}/trigger`, { method: 'POST' });
+          this.showToast(`Task "${name}" triggered successfully`, 'success');
+          await this.loadTasks();
+        } catch (e) {
+          this.showToast(`Failed to trigger "${name}"`, 'error');
+        } finally {
+          this.triggering = null;
+        }
+      },
+
+      formatTime(iso) {
+        if (!iso) return '—';
+        return new Date(iso).toLocaleString();
+      },
+
+      showToast(message, type = 'info') {
+        this.toast = { show: true, message, type };
+        setTimeout(() => { this.toast.show = false; }, 3000);
+      }
+    };
+  }
+</script>
+{% endblock %}

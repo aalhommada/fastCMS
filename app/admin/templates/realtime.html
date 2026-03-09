@@ -50,32 +50,24 @@
             Tracks who's currently online in real-time
           </p>
           <div class="flex items-center space-x-2">
-            <span class="text-2xl font-bold text-indigo-600" x-text="activeUsers.length"></span>
+            <span class="text-2xl font-bold text-indigo-600" x-text="activeUsers"></span>
             <span class="text-sm text-gray-500">users online</span>
           </div>
         </div>
 
         <div class="space-y-2 max-h-60 overflow-y-auto">
-          <template x-for="user in activeUsers" :key="user.user_id">
-            <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <div class="flex items-center">
-                <div class="h-2 w-2 bg-green-500 rounded-full mr-2"></div>
-                <span class="text-sm font-medium text-gray-900" x-text="user.user_name || user.user_id"></span>
-              </div>
-              <div class="text-xs text-gray-500">
-                <span x-text="user.connections"></span> connection<span x-show="user.connections !== 1">s</span>
-              </div>
-            </div>
-          </template>
-
-          <div x-show="activeUsers.length === 0" class="text-center py-4 text-gray-500 text-sm">
+          <div x-show="activeUsers === 0" class="text-center py-4 text-gray-500 text-sm">
             No active users
+          </div>
+          <div x-show="activeUsers > 0" class="flex items-center p-2 bg-gray-50 rounded">
+            <div class="h-2 w-2 bg-green-500 rounded-full mr-2"></div>
+            <span class="text-sm font-medium text-gray-900" x-text="`${activeUsers} active connection(s)`"></span>
           </div>
         </div>
 
         <div class="mt-4 pt-4 border-t border-gray-200">
           <button
-            @click="fetchPresence"
+            @click="fetchStats"
             class="text-sm text-indigo-600 hover:text-indigo-500"
           >
             <i class="fas fa-sync-alt mr-1"></i> Refresh
@@ -214,57 +206,54 @@
           <!-- JavaScript Example -->
           <div>
             <h4 class="text-sm font-medium text-gray-700 mb-2">JavaScript (Browser)</h4>
-            <pre class="p-4 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-x-auto"><code>// Basic connection
-const eventSource = new EventSource('/api/v1/realtime');
+            <pre class="p-4 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-x-auto"><code>// Connect to WebSocket
+const ws = new WebSocket('ws://localhost:8000/api/v1/ws/realtime');
 
-// With presence tracking
-const eventSource = new EventSource('/api/v1/realtime?user_id={{ user.user_id }}');
+ws.onopen = () => {
+  // Authenticate (optional, for protected collections)
+  ws.send(JSON.stringify({ type: 'auth', token: 'YOUR_JWT_TOKEN' }));
+  // Subscribe to all collections
+  ws.send(JSON.stringify({ type: 'subscribe', collection: '*' }));
+  // Or a specific collection with filter
+  ws.send(JSON.stringify({ type: 'subscribe', collection: 'posts', filter: { status: 'published' } }));
+};
 
-// With live query filter
-const eventSource = new EventSource('/api/v1/realtime?query=status=published');
-
-// Listen to events
-eventSource.addEventListener('record.created', (e) => {
-  const data = JSON.parse(e.data);
-  console.log('New record:', data);
-});
-
-eventSource.addEventListener('record.updated', (e) => {
-  const data = JSON.parse(e.data);
-  console.log('Record updated:', data);
-});
-
-eventSource.addEventListener('user.joined', (e) => {
-  const data = JSON.parse(e.data);
-  console.log('User joined:', data);
-});</code></pre>
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+  if (msg.type === 'record.created') console.log('New record:', msg.data);
+  if (msg.type === 'record.updated') console.log('Updated:', msg.data);
+  if (msg.type === 'record.deleted') console.log('Deleted:', msg.data);
+};</code></pre>
           </div>
 
           <!-- Python Example -->
           <div>
             <h4 class="text-sm font-medium text-gray-700 mb-2">Python</h4>
-            <pre class="p-4 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-x-auto"><code>import httpx
+            <pre class="p-4 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-x-auto"><code>import asyncio, json, websockets
 
-# Subscribe to real-time updates
-async with httpx.AsyncClient() as client:
-    async with client.stream('GET', 'http://localhost:8000/api/v1/realtime') as response:
-        async for line in response.aiter_lines():
-            if line.startswith('data:'):
-                data = json.loads(line[5:])
-                print(f"Event: {data['type']}, Data: {data['data']}")</code></pre>
+async def listen():
+    uri = "ws://localhost:8000/api/v1/ws/realtime"
+    async with websockets.connect(uri) as ws:
+        # Authenticate
+        await ws.send(json.dumps({"type": "auth", "token": "YOUR_JWT_TOKEN"}))
+        # Subscribe to all events
+        await ws.send(json.dumps({"type": "subscribe", "collection": "*"}))
+        async for message in ws:
+            msg = json.loads(message)
+            print(f"Event: {msg['type']}, Data: {msg.get('data')}")
+
+asyncio.run(listen())</code></pre>
           </div>
 
-          <!-- cURL Example -->
+          <!-- Stats Example -->
           <div>
-            <h4 class="text-sm font-medium text-gray-700 mb-2">cURL</h4>
-            <pre class="p-4 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-x-auto"><code># Subscribe to all events
-curl -N http://localhost:8000/api/v1/realtime
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Connection Stats</h4>
+            <pre class="p-4 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-x-auto"><code># Get connection statistics
+curl http://localhost:8000/api/v1/stats
 
-# Subscribe with filter
-curl -N 'http://localhost:8000/api/v1/realtime?query=status=published'
-
-# Get active users
-curl http://localhost:8000/api/v1/presence</code></pre>
+# WebSocket endpoint
+ws://localhost:8000/api/v1/ws/realtime
+ws://localhost:8000/api/v1/ws/realtime?token=YOUR_JWT_TOKEN</code></pre>
           </div>
         </div>
       </div>
@@ -298,12 +287,13 @@ curl http://localhost:8000/api/v1/presence</code></pre>
   function realtimeDemo() {
     return {
       connected: false,
-      eventSource: null,
+      ws: null,
       events: [],
       filteredEvents: [],
-      activeUsers: [],
+      activeUsers: 0,
       queryFilter: '',
       currentQuery: '',
+      token: null,
       toast: {
         show: false,
         message: '',
@@ -312,74 +302,49 @@ curl http://localhost:8000/api/v1/presence</code></pre>
 
       init() {
         this.connect();
-        this.fetchPresence();
-        // Poll presence every 10 seconds
+        // Poll stats every 10 seconds
         setInterval(() => {
-          if (this.connected) {
-            this.fetchPresence();
-          }
+          if (this.connected) this.fetchStats();
         }, 10000);
       },
 
       connect() {
         try {
-          // Connect with user tracking
-          const userId = '{{ user.user_id }}';
-          let url = '/api/v1/realtime';
-          if (userId) {
-            url += `?user_id=${userId}`;
-          }
+          const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const url = `${proto}//${location.host}/api/v1/ws/realtime`;
+          this.ws = new WebSocket(url);
 
-          if (this.currentQuery) {
-            url += (userId ? '&' : '?') + `query=${encodeURIComponent(this.currentQuery)}`;
-          }
-
-          this.eventSource = new EventSource(url);
-
-          this.eventSource.addEventListener('connected', () => {
+          this.ws.onopen = () => {
             this.connected = true;
             this.showToast('Connected to real-time server', 'success');
-          });
-
-          this.eventSource.addEventListener('record.created', (e) => {
-            const data = JSON.parse(e.data);
-            this.events.push(data);
-            if (this.currentQuery) {
-              this.filteredEvents.push(data);
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+              this.ws.send(JSON.stringify({ type: 'subscribe', collection: '*' }));
             }
-          });
+            this.fetchStats();
+          };
 
-          this.eventSource.addEventListener('record.updated', (e) => {
-            const data = JSON.parse(e.data);
-            this.events.push(data);
-            if (this.currentQuery) {
-              this.filteredEvents.push(data);
-            }
-          });
+          this.ws.onmessage = (event) => {
+            try {
+              const msg = JSON.parse(event.data);
+              const recordTypes = ['record.created', 'record.updated', 'record.deleted'];
+              if (recordTypes.includes(msg.type)) {
+                const entry = { type: msg.type, ...msg.data, _ts: new Date().toISOString() };
+                this.events.unshift(entry);
+                if (this.events.length > 50) this.events.pop();
+                if (this.currentQuery) this.filteredEvents.unshift(entry);
+              } else if (msg.type === 'user.joined' || msg.type === 'user.left') {
+                this.fetchStats();
+              }
+            } catch (e) {}
+          };
 
-          this.eventSource.addEventListener('record.deleted', (e) => {
-            const data = JSON.parse(e.data);
-            this.events.push(data);
-            if (this.currentQuery) {
-              this.filteredEvents.push(data);
-            }
-          });
-
-          this.eventSource.addEventListener('user.joined', (e) => {
-            const data = JSON.parse(e.data);
-            this.events.push(data);
-            this.fetchPresence();
-          });
-
-          this.eventSource.addEventListener('user.left', (e) => {
-            const data = JSON.parse(e.data);
-            this.events.push(data);
-            this.fetchPresence();
-          });
-
-          this.eventSource.onerror = () => {
+          this.ws.onclose = () => {
             this.connected = false;
-            this.showToast('Connection lost', 'error');
+          };
+
+          this.ws.onerror = () => {
+            this.connected = false;
+            this.showToast('Connection error', 'error');
           };
 
         } catch (error) {
@@ -389,9 +354,9 @@ curl http://localhost:8000/api/v1/presence</code></pre>
       },
 
       disconnect() {
-        if (this.eventSource) {
-          this.eventSource.close();
-          this.eventSource = null;
+        if (this.ws) {
+          this.ws.close();
+          this.ws = null;
           this.connected = false;
           this.showToast('Disconnected', 'info');
         }
@@ -408,21 +373,18 @@ curl http://localhost:8000/api/v1/presence</code></pre>
       applyQueryFilter() {
         this.currentQuery = this.queryFilter;
         this.filteredEvents = [];
-
-        // Reconnect with new filter
-        this.disconnect();
-        setTimeout(() => this.connect(), 100);
-
-        this.showToast(`Applied filter: ${this.currentQuery || 'none'}`, 'success');
+        this.showToast(`Filter set: ${this.currentQuery || 'none'}`, 'success');
       },
 
-      async fetchPresence() {
+      async fetchStats() {
         try {
-          const response = await fetch('/api/v1/presence');
-          const data = await response.json();
-          this.activeUsers = data.users || [];
+          const response = await fetch('/api/v1/stats');
+          if (response.ok) {
+            const data = await response.json();
+            this.activeUsers = data.unique_users || 0;
+          }
         } catch (error) {
-          console.error('Failed to fetch presence:', error);
+          // Stats endpoint may require auth — ignore silently
         }
       },
 

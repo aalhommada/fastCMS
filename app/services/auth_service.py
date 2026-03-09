@@ -13,6 +13,7 @@ from app.core.exceptions import (
     BadRequestException,
     ConflictException,
     ForbiddenException,
+    NotFoundException,
     UnauthorizedException,
 )
 from app.core.logging import get_logger
@@ -699,7 +700,7 @@ class AuthService:
         # Get the refresh token
         token = await self.token_repo.get_by_id(session_id)
         if not token or token.user_id != user_id:
-            raise UnauthorizedException("Session not found")
+            raise NotFoundException("Session not found")
 
         # Revoke the token
         await self.token_repo.revoke(token)

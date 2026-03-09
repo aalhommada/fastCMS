@@ -16,6 +16,7 @@ class WebhookCreate(BaseModel):
     )
     secret: Optional[str] = Field(None, description="Secret for HMAC signature")
     retry_count: int = Field(default=3, ge=0, le=10, description="Number of retries on failure")
+    active: bool = Field(default=True, description="Whether webhook is active immediately")
 
 
 class WebhookUpdate(BaseModel):

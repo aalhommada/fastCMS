@@ -41,6 +41,7 @@ async def create_webhook(
         events=data.events,
         secret=data.secret,
         retry_count=data.retry_count,
+        active=data.active,
     )
     return WebhookResponse.model_validate(webhook)
 

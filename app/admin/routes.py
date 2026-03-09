@@ -6,7 +6,7 @@ Serves HTML pages for admin interface.
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
@@ -26,7 +26,7 @@ router = APIRouter()
 def require_admin_ui(user_context: Optional[UserContext] = Depends(get_optional_user)):
     """Check if user is admin, redirect to login if not."""
     if not user_context or user_context.role != "admin":
-        return RedirectResponse(url="/admin/login", status_code=302)
+        raise HTTPException(status_code=302, headers={"Location": "/admin/login"})
     return user_context
 
 
@@ -270,6 +270,48 @@ async def admin_settings(
     )
 
 
+@router.get("/sessions", response_class=HTMLResponse)
+async def admin_sessions(
+    request: Request,
+    user: UserContext = Depends(require_admin_ui),
+):
+    """Session management page — list and revoke active sessions."""
+    return templates.TemplateResponse(
+        "sessions.html",
+        {"request": request, "user": user, "active": "sessions"},
+    )
+
+
+@router.get("/ip-rules", response_class=HTMLResponse)
+async def admin_ip_rules(
+    request: Request,
+    user: UserContext = Depends(require_admin_ui),
+):
+    """IP allowlist/blocklist management page."""
+    from app.core.config import settings as app_settings
+    return templates.TemplateResponse(
+        "ip_rules.html",
+        {
+            "request": request,
+            "user": user,
+            "active": "ip_rules",
+            "ip_filter_enabled": app_settings.IP_FILTER_ENABLED,
+        },
+    )
+
+
+@router.get("/metrics", response_class=HTMLResponse)
+async def admin_metrics(
+    request: Request,
+    user: UserContext = Depends(require_admin_ui),
+):
+    """Metrics dashboard page."""
+    return templates.TemplateResponse(
+        "metrics.html",
+        {"request": request, "user": user, "active": "metrics"},
+    )
+
+
 @router.get("/settings/email", response_class=HTMLResponse)
 async def admin_email_settings(
     request: Request,
@@ -316,6 +358,18 @@ async def admin_realtime(
     return templates.TemplateResponse(
         "realtime.html",
         {"request": request, "user": user, "active": "realtime"},
+    )
+
+
+@router.get("/cron", response_class=HTMLResponse)
+async def admin_cron(
+    request: Request,
+    user: UserContext = Depends(require_admin_ui),
+):
+    """Cron job management page."""
+    return templates.TemplateResponse(
+        "cron.html",
+        {"request": request, "user": user, "active": "cron"},
     )
 
 

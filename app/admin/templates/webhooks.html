@@ -67,15 +67,15 @@
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex flex-wrap gap-1">
-                                <template x-for="event in webhook.events" :key="event">
+                                <template x-for="event in (webhook.events || '').split(',').filter(e => e)" :key="event">
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800" x-text="event"></span>
                                 </template>
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span :class="webhook.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
+                            <span :class="webhook.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
                                 class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
-                                <span x-text="webhook.enabled ? 'Enabled' : 'Disabled'"></span>
+                                <span x-text="webhook.active ? 'Enabled' : 'Disabled'"></span>
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -87,12 +87,12 @@
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <button @click="toggleWebhook(webhook)"
                                 class="text-indigo-600 hover:text-indigo-900 mr-3"
-                                x-text="webhook.enabled ? 'Disable' : 'Enable'">
+                                x-text="webhook.active ? 'Disable' : 'Enable'">
                             </button>
                             <button @click="openEditModal(webhook)" class="text-blue-600 hover:text-blue-900 mr-3">
                                 Edit
                             </button>
-                            <button @click="showDeleteModal(webhook)" class="text-red-600 hover:text-red-900">
+                            <button @click="openDeleteModal(webhook)" class="text-red-600 hover:text-red-900">
                                 Delete
                             </button>
                         </td>
@@ -284,14 +284,11 @@
 
             async loadWebhooks() {
                 try {
-                    const data = await apiRequest(`/webhooks?page=${this.pagination.page}&per_page=${this.pagination.per_page}`);
+                    const skip = (this.pagination.page - 1) * this.pagination.per_page;
+                    const data = await apiRequest(`/webhooks?skip=${skip}&limit=${this.pagination.per_page}`);
                     this.webhooks = data.items;
-                    this.pagination = {
-                        page: data.page,
-                        per_page: data.per_page,
-                        total: data.total,
-                        total_pages: data.total_pages
-                    };
+                    this.pagination.total = data.total;
+                    this.pagination.total_pages = Math.max(1, Math.ceil(data.total / this.pagination.per_page));
                 } catch (error) {
                     console.error('Failed to load webhooks:', error);
                     showToast('Failed to load webhooks', 'error');
@@ -328,10 +325,10 @@
                 this.formData = {
                     url: webhook.url,
                     collection_name: webhook.collection_name,
-                    events: [...webhook.events],
+                    events: webhook.events ? webhook.events.split(',').filter(e => e) : [],
                     secret: webhook.secret || '',
                     retry_count: webhook.retry_count || 3,
-                    enabled: webhook.enabled
+                    enabled: webhook.active
                 };
                 this.loadCollections();
                 this.showModal = true;
@@ -350,7 +347,7 @@
                         collection_name: this.formData.collection_name,
                         events: this.formData.events,
                         retry_count: this.formData.retry_count,
-                        enabled: this.formData.enabled
+                        active: this.formData.enabled
                     };
 
                     // Only include secret if it's not empty
@@ -381,13 +378,13 @@
             },
 
             async toggleWebhook(webhook) {
-                const newStatus = !webhook.enabled;
+                const newStatus = !webhook.active;
                 const action = newStatus ? 'enable' : 'disable';
 
                 try {
                     await apiRequest(`/webhooks/${webhook.id}`, {
                         method: 'PATCH',
-                        body: JSON.stringify({ enabled: newStatus })
+                        body: JSON.stringify({ active: newStatus })
                     });
                     showToast(`Webhook ${action}d successfully`, 'success');
                     await this.loadWebhooks();
@@ -397,7 +394,7 @@
                 }
             },
 
-            showDeleteModal(webhook) {
+            openDeleteModal(webhook) {
                 this.deleteTarget = webhook;
                 this.showDeleteModal = true;
             },

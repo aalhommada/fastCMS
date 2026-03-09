@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Sessions{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6" x-data="sessionsApp()">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Active Sessions</h1>
+      <p class="mt-1 text-sm text-gray-500">
+        All active login sessions for your account. Revoke any session you don't recognise.
+      </p>
+    </div>
+    <button
+      @click="logoutAll()"
+      :disabled="loading"
+      class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+    >
+      <i class="fas fa-sign-out-alt mr-2"></i>
+      Logout All Devices
+    </button>
+  </div>
+
+  <!-- Alert -->
+  <div x-show="alert.message" x-cloak
+    :class="alert.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'"
+    class="border rounded-lg px-4 py-3 text-sm flex items-center gap-2">
+    <i :class="alert.type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'"></i>
+    <span x-text="alert.message"></span>
+  </div>
+
+  <!-- Sessions table -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-gray-700">Sessions</h2>
+      <span class="text-xs text-gray-400" x-text="sessions.length + ' session(s)'"></span>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="loading && sessions.length === 0" class="p-12 text-center text-gray-400">
+      <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
+      <p class="text-sm">Loading sessions…</p>
+    </div>
+
+    <!-- Empty state -->
+    <div x-show="!loading && sessions.length === 0" x-cloak class="p-12 text-center">
+      <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-desktop text-gray-400 text-2xl"></i>
+      </div>
+      <h3 class="text-base font-semibold text-gray-900 mb-1">No active sessions</h3>
+      <p class="text-sm text-gray-500">You have no active sessions other than this one.</p>
+    </div>
+
+    <!-- Table -->
+    <div x-show="sessions.length > 0" x-cloak class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+          <tr>
+            <th class="px-5 py-3 text-left">Device / User Agent</th>
+            <th class="px-5 py-3 text-left">IP Address</th>
+            <th class="px-5 py-3 text-left">Created</th>
+            <th class="px-5 py-3 text-left">Expires</th>
+            <th class="px-5 py-3 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <template x-for="session in sessions" :key="session.id">
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-5 py-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-desktop text-indigo-600 text-xs"></i>
+                  </div>
+                  <span class="text-gray-700 text-xs font-mono truncate max-w-xs" x-text="session.user_agent || 'Unknown device'"></span>
+                </div>
+              </td>
+              <td class="px-5 py-3 text-gray-600 font-mono text-xs" x-text="session.ip_address || '—'"></td>
+              <td class="px-5 py-3 text-gray-500 text-xs" x-text="formatDate(session.created)"></td>
+              <td class="px-5 py-3 text-gray-500 text-xs" x-text="formatDate(session.expires_at)"></td>
+              <td class="px-5 py-3 text-right">
+                <button
+                  @click="revokeSession(session.id)"
+                  class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <i class="fas fa-times mr-1"></i>Revoke
+                </button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Info card -->
+  <div class="bg-blue-50 border border-blue-100 rounded-xl p-5">
+    <h3 class="text-sm font-semibold text-blue-900 mb-2">
+      <i class="fas fa-info-circle mr-2"></i>About Sessions
+    </h3>
+    <p class="text-xs text-blue-700">
+      Each login creates a session backed by a refresh token. Revoking a session immediately invalidates
+      the refresh token — the user will need to log in again on that device.
+      Access tokens remain valid until they expire (usually 15 minutes).
+    </p>
+  </div>
+</div>
+
+<script>
+function sessionsApp() {
+  return {
+    sessions: [],
+    loading: true,
+    alert: { message: '', type: 'success' },
+
+    async init() {
+      await this.fetchSessions();
+    },
+
+    async fetchSessions() {
+      this.loading = true;
+      try {
+        const token = this.getToken();
+        const res = await fetch('/api/v1/auth/sessions', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to load sessions');
+        const data = await res.json();
+        this.sessions = data.sessions || [];
+      } catch (e) {
+        this.showAlert(e.message, 'error');
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async revokeSession(sessionId) {
+      if (!confirm('Revoke this session?')) return;
+      try {
+        const token = this.getToken();
+        const res = await fetch(`/api/v1/auth/sessions/${sessionId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to revoke session');
+        this.sessions = this.sessions.filter(s => s.id !== sessionId);
+        this.showAlert('Session revoked successfully.', 'success');
+      } catch (e) {
+        this.showAlert(e.message, 'error');
+      }
+    },
+
+    async logoutAll() {
+      if (!confirm('Log out from ALL devices? You will be redirected to login.')) return;
+      try {
+        const token = this.getToken();
+        const res = await fetch('/api/v1/auth/logout-all', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to logout all sessions');
+        window.location.href = '/admin/login';
+      } catch (e) {
+        this.showAlert(e.message, 'error');
+      }
+    },
+
+    formatDate(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleString();
+    },
+
+    getToken() {
+      return document.cookie.split('; ')
+        .find(r => r.startsWith('access_token='))?.split('=')[1]
+        || localStorage.getItem('access_token') || '';
+    },
+
+    showAlert(message, type = 'success') {
+      this.alert = { message, type };
+      setTimeout(() => this.alert = { message: '', type: 'success' }, 4000);
+    }
+  };
+}
+</script>
+{% endblock %}

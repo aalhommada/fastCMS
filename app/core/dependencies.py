@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import UnauthorizedException
+from app.core.exceptions import ForbiddenException, UnauthorizedException
 from app.core.security import decode_token, verify_token_type
 from app.db.session import get_db
 
@@ -22,6 +22,7 @@ class UserContext:
     auth_type: str = "jwt"  # "jwt" or "api_key"
     api_key_id: Optional[str] = None
     api_key_scopes: Optional[str] = None
+    email: Optional[str] = None
 
 
 async def get_current_user(
@@ -90,7 +91,7 @@ async def get_current_user(
         if not user:
             raise UnauthorizedException("User not found")
 
-        return UserContext(user_id=user_id, role=user.role, auth_type="jwt")
+        return UserContext(user_id=user_id, role=user.role, auth_type="jwt", email=user.email)
 
     except (ValueError, UnauthorizedException):
         return None
@@ -247,5 +248,5 @@ async def require_admin(
         UnauthorizedException: If user is not admin
     """
     if user_context.role != "admin":
-        raise UnauthorizedException("Admin access required")
+        raise ForbiddenException("Admin access required")
     return user_context

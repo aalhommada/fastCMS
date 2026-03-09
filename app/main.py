@@ -263,11 +263,15 @@ else:
     logger.warning(f"Static directory not found at {static_dir}, skipping static files mount")
 
 # Add custom middleware
-from app.core.middleware import LoggingMiddleware, ReadOnlyMiddleware, SecurityHeadersMiddleware
+from app.core.middleware import IPFilterMiddleware, LoggingMiddleware, ReadOnlyMiddleware, SecurityHeadersMiddleware
 
 app.add_middleware(ReadOnlyMiddleware)
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+
+# IP filter runs outermost so blocked IPs are rejected before any other processing
+if settings.IP_FILTER_ENABLED:
+    app.add_middleware(IPFilterMiddleware)
 
 # Include API routers
 from app.admin import routes as admin_routes

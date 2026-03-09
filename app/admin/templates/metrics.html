@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Metrics{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6" x-data="metricsApp()">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Metrics</h1>
+      <p class="mt-1 text-sm text-gray-500">
+        Live request counts, latency percentiles, and error rates. Auto-refreshes every 15 seconds.
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-xs text-gray-400" x-text="lastUpdated ? 'Updated ' + lastUpdated : ''"></span>
+      <button @click="fetchMetrics()"
+        :class="loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'"
+        class="inline-flex items-center px-3 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-lg transition-colors"
+        :disabled="loading">
+        <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'" class="mr-2"></i>Refresh
+      </button>
+      <a href="/api/v1/admin/metrics/prometheus" target="_blank"
+        class="inline-flex items-center px-3 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors">
+        <i class="fas fa-external-link-alt mr-2"></i>Prometheus
+      </a>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div x-show="error" x-cloak class="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+    <i class="fas fa-exclamation-circle mr-2"></i><span x-text="error"></span>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total Requests</p>
+      <p class="text-3xl font-bold text-gray-900" x-text="formatNum(stat('fastcms_http_requests_total'))">—</p>
+      <p class="text-xs text-gray-400 mt-1">Since server start</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total Errors (5xx)</p>
+      <p class="text-3xl font-bold text-red-600" x-text="formatNum(stat('fastcms_http_errors_total'))">—</p>
+      <p class="text-xs text-gray-400 mt-1">HTTP 5xx responses</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Median Latency</p>
+      <p class="text-3xl font-bold text-indigo-600" x-text="formatMs(histStat('fastcms_http_request_duration_ms', 'p50'))">—</p>
+      <p class="text-xs text-gray-400 mt-1">p50 response time</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Uptime</p>
+      <p class="text-3xl font-bold text-green-600" x-text="formatUptime(stat('fastcms_uptime_seconds'))">—</p>
+      <p class="text-xs text-gray-400 mt-1">Server uptime</p>
+    </div>
+  </div>
+
+  <!-- Latency percentiles -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h2 class="text-sm font-semibold text-gray-700">Request Latency</h2>
+      <p class="text-xs text-gray-400 mt-0.5">fastcms_http_request_duration_ms</p>
+    </div>
+    <div class="p-5 grid grid-cols-2 md:grid-cols-4 gap-4">
+      <template x-for="p in ['mean','p50','p95','p99']">
+        <div class="text-center">
+          <p class="text-2xl font-bold text-gray-800" x-text="formatMs(histStat('fastcms_http_request_duration_ms', p))"></p>
+          <p class="text-xs text-gray-500 uppercase tracking-wider mt-1" x-text="p === 'mean' ? 'Mean' : p.toUpperCase()"></p>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Counters table -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h2 class="text-sm font-semibold text-gray-700">All Counters</h2>
+    </div>
+    <div x-show="loading && !snapshot" class="p-8 text-center text-gray-400 text-sm">
+      <i class="fas fa-spinner fa-spin mr-2"></i>Loading…
+    </div>
+    <div x-show="snapshot && Object.keys(snapshot.counters || {}).length === 0" x-cloak class="p-8 text-center text-gray-400 text-sm">
+      No counter data yet — make some requests first.
+    </div>
+    <div x-show="snapshot && Object.keys(snapshot.counters || {}).length > 0" x-cloak class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+          <tr>
+            <th class="px-5 py-3 text-left">Metric</th>
+            <th class="px-5 py-3 text-right">Value</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <template x-for="[key, value] in Object.entries(snapshot?.counters || {})">
+            <tr class="hover:bg-gray-50">
+              <td class="px-5 py-3 font-mono text-xs text-gray-700" x-text="key"></td>
+              <td class="px-5 py-3 text-right font-semibold text-gray-900" x-text="formatNum(value)"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Gauges table -->
+  <div x-show="snapshot && Object.keys(snapshot.gauges || {}).length > 0" x-cloak
+    class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h2 class="text-sm font-semibold text-gray-700">Gauges</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+          <tr>
+            <th class="px-5 py-3 text-left">Metric</th>
+            <th class="px-5 py-3 text-right">Value</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <template x-for="[key, value] in Object.entries(snapshot?.gauges || {})">
+            <tr class="hover:bg-gray-50">
+              <td class="px-5 py-3 font-mono text-xs text-gray-700" x-text="key"></td>
+              <td class="px-5 py-3 text-right font-semibold text-gray-900" x-text="value.toFixed(2)"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function metricsApp() {
+  return {
+    snapshot: null, loading: false, error: '', lastUpdated: '',
+    _timer: null,
+
+    async init() {
+      await this.fetchMetrics();
+      this._timer = setInterval(() => this.fetchMetrics(), 15000);
+    },
+
+    destroy() { clearInterval(this._timer); },
+
+    async fetchMetrics() {
+      this.loading = true; this.error = '';
+      try {
+        const token = this.getToken();
+        const res = await fetch('/api/v1/admin/metrics', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to load metrics');
+        this.snapshot = await res.json();
+        this.lastUpdated = new Date().toLocaleTimeString();
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    stat(name) {
+      if (!this.snapshot?.counters) return null;
+      // Sum all labels for this metric name
+      let total = 0, found = false;
+      for (const [k, v] of Object.entries(this.snapshot.counters)) {
+        if (k === name || k.startsWith(name + '{')) { total += v; found = true; }
+      }
+      if (!found && this.snapshot.gauges) {
+        for (const [k, v] of Object.entries(this.snapshot.gauges)) {
+          if (k === name || k.startsWith(name + '{')) { total += v; found = true; }
+        }
+      }
+      return found ? total : null;
+    },
+
+    histStat(name, field) {
+      if (!this.snapshot?.histograms) return null;
+      for (const [k, v] of Object.entries(this.snapshot.histograms)) {
+        if (k === name || k.startsWith(name + '{')) return v[field] ?? null;
+      }
+      return null;
+    },
+
+    formatNum(v) { return v === null || v === undefined ? '—' : Number(v).toLocaleString(); },
+    formatMs(v) { return v === null || v === undefined ? '—' : Number(v).toFixed(1) + ' ms'; },
+    formatUptime(v) {
+      if (v === null || v === undefined) return '—';
+      const s = Math.round(v);
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+      return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+    },
+    getToken() {
+      return document.cookie.split('; ').find(r => r.startsWith('access_token='))?.split('=')[1]
+        || localStorage.getItem('access_token') || '';
+    }
+  };
+}
+</script>
+{% endblock %}

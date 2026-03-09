@@ -210,10 +210,7 @@
 
             async loadCollection() {
                 try {
-                    const response = await apiRequest(`/collections?filter=name=${this.collectionName}`);
-                    if (response.items && response.items.length > 0) {
-                        this.collection = response.items[0];
-                    }
+                    this.collection = await apiRequest(`/collections/name/${this.collectionName}`);
                 } catch (error) {
                     console.error('Failed to load collection:', error);
                     showToast('Failed to load collection', 'error');

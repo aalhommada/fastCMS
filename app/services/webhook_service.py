@@ -30,6 +30,7 @@ class WebhookService:
         events: List[str],
         secret: Optional[str] = None,
         retry_count: int = 3,
+        active: bool = True,
     ) -> Webhook:
         """Create a new webhook subscription."""
         webhook = Webhook(
@@ -38,7 +39,7 @@ class WebhookService:
             events=",".join(events),
             secret=secret,
             retry_count=retry_count,
-            active=True,
+            active=active,
         )
 
         webhook = await self.repo.create(webhook)

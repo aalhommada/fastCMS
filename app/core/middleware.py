@@ -137,10 +137,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         """Default Content Security Policy."""
         return "; ".join([
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  # Required for admin UI
-            "style-src 'self' 'unsafe-inline'",
+            # Admin UI loads Tailwind, Alpine.js, FontAwesome from CDN
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net",
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com",
             "img-src 'self' data: https:",
-            "font-src 'self' data:",
+            # FontAwesome fonts from cdnjs
+            "font-src 'self' data: https://cdnjs.cloudflare.com",
             "connect-src 'self' ws: wss:",  # Allow WebSocket connections
             "frame-ancestors 'none'",
             "base-uri 'self'",

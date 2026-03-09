@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% block title %}IP Rules{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6" x-data="ipRulesApp()">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">IP Allowlist / Blocklist</h1>
+      <p class="mt-1 text-sm text-gray-500">
+        Block or allow specific IPs and CIDR ranges.
+        Requires <code class="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">IP_FILTER_ENABLED=true</code> in your environment.
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <span
+        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+          {% if ip_filter_enabled %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-700{% endif %}">
+        <i class="fas fa-circle mr-1.5 text-xs {% if ip_filter_enabled %}text-green-500{% else %}text-yellow-500{% endif %}"></i>
+        {% if ip_filter_enabled %}Active{% else %}Disabled{% endif %}
+      </span>
+      <button
+        @click="showAddModal = true"
+        class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+      >
+        <i class="fas fa-plus mr-2"></i>Add Rule
+      </button>
+    </div>
+  </div>
+
+  <!-- Alert -->
+  <div x-show="alert.message" x-cloak
+    :class="alert.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'"
+    class="border rounded-lg px-4 py-3 text-sm flex items-center gap-2">
+    <i :class="alert.type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'"></i>
+    <span x-text="alert.message"></span>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="flex gap-2">
+    <button @click="filterType = null; fetchRules()"
+      :class="filterType === null ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+      class="px-4 py-2 text-sm font-medium rounded-lg transition-colors">All</button>
+    <button @click="filterType = 'block'; fetchRules()"
+      :class="filterType === 'block' ? 'bg-red-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+      class="px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+      <i class="fas fa-ban mr-1.5"></i>Blocked
+    </button>
+    <button @click="filterType = 'allow'; fetchRules()"
+      :class="filterType === 'allow' ? 'bg-green-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+      class="px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+      <i class="fas fa-check-circle mr-1.5"></i>Allowed
+    </button>
+  </div>
+
+  <!-- Rules table -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-gray-700">Rules</h2>
+      <span class="text-xs text-gray-400" x-text="total + ' rule(s)'"></span>
+    </div>
+
+    <div x-show="loading && rules.length === 0" class="p-12 text-center text-gray-400">
+      <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
+      <p class="text-sm">Loading rules…</p>
+    </div>
+
+    <div x-show="!loading && rules.length === 0" x-cloak class="p-12 text-center">
+      <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-shield-alt text-gray-400 text-2xl"></i>
+      </div>
+      <h3 class="text-base font-semibold text-gray-900 mb-1">No rules defined</h3>
+      <p class="text-sm text-gray-500">All IPs are allowed by default. Add a block rule to restrict access.</p>
+    </div>
+
+    <div x-show="rules.length > 0" x-cloak class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+          <tr>
+            <th class="px-5 py-3 text-left">IP / CIDR</th>
+            <th class="px-5 py-3 text-left">Type</th>
+            <th class="px-5 py-3 text-left">Reason</th>
+            <th class="px-5 py-3 text-left">Expires</th>
+            <th class="px-5 py-3 text-left">Created</th>
+            <th class="px-5 py-3 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <template x-for="rule in rules" :key="rule.id">
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-5 py-3 font-mono text-sm text-gray-900" x-text="rule.cidr"></td>
+              <td class="px-5 py-3">
+                <span
+                  :class="rule.rule_type === 'block' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
+                  x-text="rule.rule_type">
+                </span>
+              </td>
+              <td class="px-5 py-3 text-gray-500 text-xs max-w-xs truncate" x-text="rule.reason || '—'"></td>
+              <td class="px-5 py-3 text-gray-500 text-xs" x-text="rule.expires_at ? formatDate(rule.expires_at) : 'Never'"></td>
+              <td class="px-5 py-3 text-gray-500 text-xs" x-text="formatDate(rule.created)"></td>
+              <td class="px-5 py-3 text-right">
+                <button
+                  @click="deleteRule(rule.id)"
+                  class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <i class="fas fa-trash mr-1"></i>Delete
+                </button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div x-show="totalPages > 1" x-cloak class="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
+      <button @click="prevPage()" :disabled="page === 1" class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded disabled:opacity-40">
+        <i class="fas fa-chevron-left mr-1"></i>Prev
+      </button>
+      <span class="text-xs text-gray-500" x-text="`Page ${page} of ${totalPages}`"></span>
+      <button @click="nextPage()" :disabled="page === totalPages" class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded disabled:opacity-40">
+        Next<i class="fas fa-chevron-right ml-1"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Add rule modal -->
+  <div x-show="showAddModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div @click.outside="showAddModal = false" class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Add IP Rule</h3>
+      <form @submit.prevent="addRule()" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">IP Address or CIDR</label>
+          <input x-model="form.cidr" type="text" placeholder="192.168.1.1 or 10.0.0.0/8" required
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Rule Type</label>
+          <select x-model="form.rule_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="block">Block</option>
+            <option value="allow">Allow</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Reason (optional)</label>
+          <input x-model="form.reason" type="text" placeholder="e.g. Known bad actor"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Expires At (optional)</label>
+          <input x-model="form.expires_at" type="datetime-local"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="showAddModal = false"
+            class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+            Cancel
+          </button>
+          <button type="submit" :disabled="submitting"
+            class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
+            <span x-show="!submitting">Add Rule</span>
+            <span x-show="submitting" x-cloak><i class="fas fa-spinner fa-spin mr-1"></i>Adding…</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Info card -->
+  <div class="bg-amber-50 border border-amber-100 rounded-xl p-5">
+    <h3 class="text-sm font-semibold text-amber-900 mb-2">
+      <i class="fas fa-exclamation-triangle mr-2"></i>How it works
+    </h3>
+    <ul class="text-xs text-amber-700 space-y-1 list-disc list-inside">
+      <li>Block rules take precedence over allow rules.</li>
+      <li>Both single IPs (<code class="font-mono">1.2.3.4</code>) and CIDR ranges (<code class="font-mono">10.0.0.0/8</code>) are supported.</li>
+      <li>Rules with an expiry date are automatically ignored after they expire.</li>
+      <li>Enable with <code class="font-mono">IP_FILTER_ENABLED=true</code> in your <code class="font-mono">.env</code> file.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+function ipRulesApp() {
+  return {
+    rules: [], total: 0, page: 1, perPage: 50, totalPages: 0,
+    loading: true, filterType: null,
+    showAddModal: false, submitting: false,
+    alert: { message: '', type: 'success' },
+    form: { cidr: '', rule_type: 'block', reason: '', expires_at: '' },
+
+    async init() { await this.fetchRules(); },
+
+    async fetchRules() {
+      this.loading = true;
+      try {
+        const token = this.getToken();
+        let url = `/api/v1/admin/ip-rules?page=${this.page}&per_page=${this.perPage}`;
+        if (this.filterType) url += `&rule_type=${this.filterType}`;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error('Failed to load rules');
+        const data = await res.json();
+        this.rules = data.items || [];
+        this.total = data.total || 0;
+        this.totalPages = data.total_pages || 0;
+      } catch (e) {
+        this.showAlert(e.message, 'error');
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async addRule() {
+      this.submitting = true;
+      try {
+        const token = this.getToken();
+        const payload = {
+          cidr: this.form.cidr,
+          rule_type: this.form.rule_type,
+          reason: this.form.reason || null,
+          expires_at: this.form.expires_at || null,
+        };
+        const res = await fetch('/api/v1/admin/ip-rules', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || 'Failed to add rule');
+        }
+        this.showAddModal = false;
+        this.form = { cidr: '', rule_type: 'block', reason: '', expires_at: '' };
+        this.showAlert('Rule added successfully.', 'success');
+        await this.fetchRules();
+      } catch (e) {
+        this.showAlert(e.message, 'error');
+      } finally {
+        this.submitting = false;
+      }
+    },
+
+    async deleteRule(ruleId) {
+      if (!confirm('Delete this rule?')) return;
+      try {
+        const token = this.getToken();
+        const res = await fetch(`/api/v1/admin/ip-rules/${ruleId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to delete rule');
+        this.rules = this.rules.filter(r => r.id !== ruleId);
+        this.total--;
+        this.showAlert('Rule deleted.', 'success');
+      } catch (e) {
+        this.showAlert(e.message, 'error');
+      }
+    },
+
+    prevPage() { if (this.page > 1) { this.page--; this.fetchRules(); } },
+    nextPage() { if (this.page < this.totalPages) { this.page++; this.fetchRules(); } },
+    formatDate(iso) { return iso ? new Date(iso).toLocaleString() : '—'; },
+    getToken() {
+      return document.cookie.split('; ').find(r => r.startsWith('access_token='))?.split('=')[1]
+        || localStorage.getItem('access_token') || '';
+    },
+    showAlert(message, type = 'success') {
+      this.alert = { message, type };
+      setTimeout(() => this.alert = { message: '', type: 'success' }, 4000);
+    }
+  };
+}
+</script>
+{% endblock %}

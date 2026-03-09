@@ -88,7 +88,7 @@ class CollectionService:
         # Broadcast collection created event
         await event_manager.broadcast(
             Event(
-                event_type=EventType.COLLECTION_CREATED,
+                type=EventType.COLLECTION_CREATED,
                 collection_name="__collections__",
                 record_id=collection.id,
                 data={
@@ -273,7 +273,7 @@ class CollectionService:
         # Broadcast collection updated event
         await event_manager.broadcast(
             Event(
-                event_type=EventType.COLLECTION_UPDATED,
+                type=EventType.COLLECTION_UPDATED,
                 collection_name="__collections__",
                 record_id=collection.id,
                 data={
@@ -360,7 +360,7 @@ class CollectionService:
         # Broadcast collection deleted event
         await event_manager.broadcast(
             Event(
-                event_type=EventType.COLLECTION_DELETED,
+                type=EventType.COLLECTION_DELETED,
                 collection_name="__collections__",
                 record_id=deleted_collection_id,
                 data={
