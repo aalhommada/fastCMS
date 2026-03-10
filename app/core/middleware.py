@@ -139,7 +139,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "default-src 'self'",
             # Admin UI loads Tailwind, Alpine.js, FontAwesome from CDN
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net",
-            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com",
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net",
             "img-src 'self' data: https:",
             # FontAwesome fonts from cdnjs
             "font-src 'self' data: https://cdnjs.cloudflare.com",

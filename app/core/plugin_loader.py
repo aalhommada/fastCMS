@@ -17,6 +17,7 @@ Example plugin structure:
 import importlib.util
 import sys
 import traceback
+import types
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -28,6 +29,14 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
 
 logger = get_logger(__name__)
+
+
+def _ensure_namespace() -> None:
+    """Create the fastcms_plugin namespace package so plugins can import from each other."""
+    if "fastcms_plugin" not in sys.modules:
+        ns = types.ModuleType("fastcms_plugin")
+        ns.__path__ = []
+        sys.modules["fastcms_plugin"] = ns
 
 _REQUIRED_META_KEYS = {"id", "name", "version"}
 _loaded_plugins: list[dict] = []  # [{id, name, version}]
@@ -63,6 +72,8 @@ def load_plugins(
         logger.debug(f"No plugin packages found in '{plugins_dir}'")
         return
 
+    _ensure_namespace()
+
     for pkg_dir in packages:
         _load_single_plugin(pkg_dir, plugins_path, app, plugin_settings)
 
@@ -88,6 +99,7 @@ def _load_single_plugin(
                 return
             module = importlib.util.module_from_spec(spec)
             sys.modules[module_name] = module
+            setattr(sys.modules["fastcms_plugin"], pkg_dir.name, module)
             spec.loader.exec_module(module)  # type: ignore[union-attr]
 
         # Validate PLUGIN_META
