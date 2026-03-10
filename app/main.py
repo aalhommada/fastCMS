@@ -1,5 +1,5 @@
 """
-FastCMS - AI-Native Backend-as-a-Service
+FastCMS - Open-source Backend-as-a-Service
 
 Main FastAPI application entry point.
 """
@@ -87,7 +87,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="AI-Native Backend-as-a-Service - Open-source FastAPI CMS",
+    description="Open-source Backend-as-a-Service - Built with FastAPI",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
     default_response_class=ORJSONResponse,  # Use orjson for performance
@@ -317,8 +317,6 @@ app.include_router(admin_routes.router, prefix="/admin", tags=["Admin UI"])
 async def root_setup_redirect():
     """Redirect /setup to /admin/setup"""
     return RedirectResponse(url="/admin/setup", status_code=302)
-
-# Note: AI features require AI_ENABLED=true and valid API keys in .env
 
 if __name__ == "__main__":
     import uvicorn

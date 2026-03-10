@@ -1,7 +1,7 @@
 [project]
 name = "fastcms"
 version = "0.1.0"
-description = "AI-Native Backend-as-a-Service - Open-source CMS FastAPI"
+description = "Open-source Backend-as-a-Service built with FastAPI"
 authors = [{ name = "FastCMS Team", email = "team@fastcms.dev" }]
 readme = "README.md"
 license = { text = "MIT" }
@@ -38,22 +38,8 @@ dependencies = [
 s3 = ["boto3>=1.34.0", "aioboto3>=12.3.0"]
 azure = ["azure-storage-blob>=12.19.0"]
 storage = ["boto3>=1.34.0", "aioboto3>=12.3.0", "azure-storage-blob>=12.19.0"]
-# AI features
-ai = [
-    "langchain>=0.3.7",
-    "langchain-openai>=0.2.8",
-    "langchain-anthropic>=0.2.4",
-    "langgraph>=0.2.45",
-    "faiss-cpu>=1.9.0",
-    "sentence-transformers>=3.3.1",
-    "tiktoken>=0.8.0",
-    "qdrant-client>=1.12.1",
-    "openai>=1.54.5",
-    "langchain-community>=0.3.7",
-]
 # Other optional features
 redis = ["redis>=5.2.0"]
-local-llm = ["ollama>=0.4.2", "langchain-ollama>=0.2.0"]
 # Development tools
 dev = [
     "pytest>=8.3.3",
@@ -68,16 +54,6 @@ all = [
     "boto3>=1.34.0",
     "aioboto3>=12.3.0",
     "azure-storage-blob>=12.19.0",
-    "langchain>=0.3.7",
-    "langchain-openai>=0.2.8",
-    "langchain-anthropic>=0.2.4",
-    "langgraph>=0.2.45",
-    "faiss-cpu>=1.9.0",
-    "sentence-transformers>=3.3.1",
-    "tiktoken>=0.8.0",
-    "qdrant-client>=1.12.1",
-    "openai>=1.54.5",
-    "langchain-community>=0.3.7",
     "redis>=5.2.0",
 ]
 

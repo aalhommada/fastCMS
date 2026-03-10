@@ -119,21 +119,6 @@ class Settings(BaseSettings):
     MICROSOFT_CLIENT_ID: str = ""
     MICROSOFT_CLIENT_SECRET: str = ""
 
-    # AI Configuration
-    AI_ENABLED: bool = True
-    AI_PROVIDER: Literal["openai", "anthropic", "ollama"] = "openai"
-    OPENAI_API_KEY: str = ""
-    ANTHROPIC_API_KEY: str = ""
-
-    # Local LLM
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama3.1:8b"
-
-    # Vector Database
-    VECTOR_DB_TYPE: Literal["faiss", "qdrant"] = "faiss"
-    QDRANT_URL: str = ""
-    QDRANT_API_KEY: str = ""
-
     # Redis for Caching, Rate Limiting, and Real-time Pub/Sub
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_ENABLED: bool = True

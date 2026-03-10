@@ -18,14 +18,16 @@ FastCMS is like having a ready-made backend for your app. Instead of spending we
 - **Backup & Restore** - One-click database backups with full restore capability
 - **Import/Export** - Move collections between environments easily
 
-### Optional AI Features
+### AI Features (via Plugins)
 
-If you add an AI API key, you also get:
+FastCMS supports AI capabilities through its plugin system. Install only what you need:
 
-- Convert plain English to database queries ("find all active users over 18")
-- Generate content automatically
-- Smart search using meaning instead of just keywords
-- Auto-create database structures from descriptions
+- **Vector Search** - Semantic search on your collections
+- **RAG** - Upload documents, ask questions in natural language
+- **AI Agents** - Autonomous agents that work with your data
+- **Content Generation** - Auto-generate content with any LLM provider
+
+See the [AI Plugins documentation](https://fastcms.dev/docs/plugins) for setup instructions.
 
 ## How to Run It
 
@@ -176,33 +178,6 @@ GOOGLE_CLIENT_SECRET=your_secret_here
 
 Then users can visit: http://localhost:8000/api/v1/oauth/login/google
 
-### AI Features
-
-Install AI dependencies:
-
-```bash
-pip install langchain langchain-openai langchain-anthropic faiss-cpu sentence-transformers
-```
-
-Add your API key to `.env`:
-
-```bash
-AI_ENABLED=true
-AI_PROVIDER=openai
-OPENAI_API_KEY=sk-your-key-here
-```
-
-Now you can use natural language queries:
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/ai/query/natural-language" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{
-    "query": "Find all published posts from this month",
-    "collection_name": "posts"
-  }'
-```
-
 ## Common Questions
 
 **Where is my data stored?**
@@ -230,7 +205,7 @@ No! The AI features are completely optional. The core backend works great withou
 - **SQLAlchemy** - Database toolkit
 - **SQLite** - Database (can use PostgreSQL too)
 - **JWT** - Secure authentication tokens
-- **LangChain** - AI features (optional)
+- **Plugin System** - Extensible with AI and other plugins
 
 ## Project Structure
 
@@ -256,11 +231,11 @@ FastCMS includes:
 - **Collection Import/Export** - Export/import schemas and data as JSON
 - **Advanced Admin UI** - Complete CRUD interface for all operations
 
-### AI-Powered Features (Optional)
+### AI Features (via Plugins)
 - **Semantic Search** - Find content by meaning, not just keywords
-- **Natural Language Queries** - "find active users over 18" → database query
-- **AI Content Generation** - Auto-generate content with GPT-4/Claude
-- **Smart Data Enrichment** - AI validates and enhances your data
+- **RAG** - Upload documents and ask questions in natural language
+- **AI Agents** - Autonomous agents that interact with your data
+- **Multi-Provider** - OpenAI, Anthropic, Ollama (local) — your choice
 
 ### Developer Experience
 - **Python Ecosystem** - Use any Python library
