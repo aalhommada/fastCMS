@@ -1,0 +1,33 @@
+# Development override — hot reload, SQLite, debug mode
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up --build
+#
+services:
+  fastcms:
+    build: .
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - DATABASE_URL=sqlite+aiosqlite:///./data/app.db
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - BASE_URL=http://localhost:8000
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@fastcms.dev}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-AdminPass123!}
+      - RATE_LIMIT_ENABLED=false
+      - REDIS_ENABLED=false
+      - LOG_LEVEL=DEBUG
+      - LOG_FORMAT=text
+    volumes:
+      - ./app:/app/app
+      - ./cli:/app/cli
+      - ./plugins:/app/plugins
+      - ./hooks:/app/hooks
+      - ./migrations:/app/migrations
+      - ./data:/app/data
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    restart: unless-stopped

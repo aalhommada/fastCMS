@@ -1,0 +1,47 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*.pyo
+*.egg-info
+.eggs
+dist
+build
+*.egg
+.venv
+venv
+env
+.mypy_cache
+.ruff_cache
+.pytest_cache
+htmlcov
+.coverage
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific
+data/
+*.db
+test-app/
+tests/
+sdk/
+fastcms.db
+DOCS.md
+FEATURES.md
+IMPLEMENTATION_PLAN.md
+CLI_QUICK_REFERENCE.md
+
+# Docker
+Dockerfile*
+docker-compose*

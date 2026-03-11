@@ -1,0 +1,61 @@
+services:
+  # ── FastCMS Application ────────────────────────────────────────
+  fastcms:
+    build: .
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
+      - DATABASE_URL=postgresql+asyncpg://fastcms:${POSTGRES_PASSWORD:-fastcms}@postgres:5432/fastcms
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - BASE_URL=${BASE_URL:-http://localhost:8000}
+      # Admin
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@fastcms.dev}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      # Storage
+      - STORAGE_TYPE=${STORAGE_TYPE:-local}
+      - LOCAL_STORAGE_PATH=/app/data/files
+      # Security
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:8000}
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
+      - IP_FILTER_ENABLED=${IP_FILTER_ENABLED:-false}
+      # Email
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-noreply@fastcms.dev}
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=json
+    volumes:
+      - fastcms-data:/app/data
+      - ./plugins:/app/plugins
+      - ./hooks:/app/hooks
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── PostgreSQL ─────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=fastcms
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-fastcms}
+      - POSTGRES_DB=fastcms
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fastcms"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  fastcms-data:
+  postgres-data:
