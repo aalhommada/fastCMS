@@ -1,0 +1,592 @@
+{% extends "base.html" %}
+{% block title %}AI Playground{% endblock %}
+
+{% block content %}
+<div x-data="aiPlayground()" x-init="init()" class="p-6 space-y-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">
+        <i class="fas fa-robot text-purple-500 mr-2"></i>AI Playground
+      </h1>
+      <p class="mt-1 text-sm text-gray-500">Chat, RAG, and Agents — powered by your AI plugins</p>
+    </div>
+    <div class="flex items-center space-x-3">
+      <span x-show="status.configured"
+            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+        <i class="fas fa-circle text-xs mr-2 text-green-500"></i>
+        <span x-text="status.provider + ' / ' + (status.model || 'default')"></span>
+      </span>
+      <span x-show="!status.configured"
+            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+        <i class="fas fa-exclamation-circle text-xs mr-2"></i>
+        Not configured
+      </span>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="border-b border-gray-200">
+    <nav class="flex space-x-8">
+      <button @click="activeTab = 'configure'" :class="activeTab === 'configure' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+              class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors">
+        <i class="fas fa-cog mr-1.5"></i>Configure
+      </button>
+      <button @click="activeTab = 'chat'" :class="activeTab === 'chat' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+              class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors">
+        <i class="fas fa-comments mr-1.5"></i>Chat
+      </button>
+      <button @click="activeTab = 'rag'" :class="activeTab === 'rag' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+              class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors">
+        <i class="fas fa-book-open mr-1.5"></i>RAG
+      </button>
+      <button @click="activeTab = 'agents'" :class="activeTab === 'agents' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+              class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors">
+        <i class="fas fa-robot mr-1.5"></i>Agents
+      </button>
+    </nav>
+  </div>
+
+  <!-- ==================== CONFIGURE TAB ==================== -->
+  <div x-show="activeTab === 'configure'" x-transition class="space-y-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Provider Configuration</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Provider</label>
+          <select x-model="config.provider" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border">
+            <option value="openai">OpenAI (or compatible: LM Studio, vLLM)</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="ollama">Ollama (local)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+          <input type="password" x-model="config.api_key" placeholder="sk-... or leave empty for local" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Base URL <span class="text-gray-400">(optional)</span></label>
+          <input type="text" x-model="config.base_url" placeholder="https://api.openai.com/v1 or http://localhost:1234/v1" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Model <span class="text-gray-400">(optional)</span></label>
+          <input type="text" x-model="config.model" placeholder="gpt-4o-mini, llama3.1:8b, etc." class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border">
+        </div>
+      </div>
+
+      <!-- Embedding config -->
+      <div class="mt-5 pt-5 border-t border-gray-100">
+        <h3 class="text-sm font-semibold text-gray-700 mb-3">Embedding Provider <span class="text-gray-400 font-normal">(for RAG & Vectors — defaults to main provider)</span></h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Embed Provider</label>
+            <select x-model="config.embed_provider" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border">
+              <option value="">Same as above</option>
+              <option value="openai">OpenAI</option>
+              <option value="ollama">Ollama</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Embed Model</label>
+            <input type="text" x-model="config.embed_model" placeholder="text-embedding-3-small, nomic-embed-text" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Embed Base URL</label>
+            <input type="text" x-model="config.embed_base_url" placeholder="Same as main base URL" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border">
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 flex items-center space-x-3">
+        <button @click="saveConfig()" :disabled="configuring"
+                class="inline-flex items-center px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
+          <i class="fas fa-save mr-2" x-show="!configuring"></i>
+          <i class="fas fa-spinner fa-spin mr-2" x-show="configuring"></i>
+          Save & Connect
+        </button>
+        <span x-show="configMsg" x-text="configMsg" x-transition
+              :class="configOk ? 'text-green-600' : 'text-red-600'" class="text-sm"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CHAT TAB ==================== -->
+  <div x-show="activeTab === 'chat'" x-transition class="space-y-4">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col" style="height: 65vh;">
+      <!-- Messages area -->
+      <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chatMessages">
+        <template x-for="(msg, i) in chatMessages" :key="i">
+          <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+            <div :class="msg.role === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-900'"
+                 class="max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
+              <span x-text="msg.content"></span>
+            </div>
+          </div>
+        </template>
+        <!-- Typing indicator -->
+        <div x-show="chatLoading" class="flex justify-start">
+          <div class="bg-gray-100 rounded-2xl px-4 py-3 text-sm text-gray-500">
+            <i class="fas fa-circle-notch fa-spin mr-1"></i> Thinking...
+          </div>
+        </div>
+        <!-- Empty state -->
+        <div x-show="chatMessages.length === 0 && !chatLoading" class="flex flex-col items-center justify-center h-full text-gray-400">
+          <i class="fas fa-comments text-4xl mb-3"></i>
+          <p class="text-sm">Send a message to start chatting with the AI</p>
+        </div>
+      </div>
+      <!-- Input area -->
+      <div class="border-t border-gray-200 p-4">
+        <div class="flex space-x-3">
+          <input type="text" x-model="chatInput" @keydown.enter="sendChat()"
+                 placeholder="Type your message..." :disabled="chatLoading"
+                 class="flex-1 rounded-xl border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-4 py-2.5 border disabled:opacity-50">
+          <button @click="sendChat()" :disabled="chatLoading || !chatInput.trim()"
+                  class="inline-flex items-center px-4 py-2.5 rounded-xl bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+          <button @click="chatMessages = []; chatInput = ''" title="Clear chat"
+                  class="inline-flex items-center px-3 py-2.5 rounded-xl border border-gray-300 text-gray-500 text-sm hover:bg-gray-50 transition-colors">
+            <i class="fas fa-trash-alt"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== RAG TAB ==================== -->
+  <div x-show="activeTab === 'rag'" x-transition class="space-y-6">
+    <!-- Ingest section -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">
+        <i class="fas fa-upload text-blue-500 mr-2"></i>Ingest Document
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Collection</label>
+          <input type="text" x-model="ragCollection" placeholder="knowledge-base" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Source Name</label>
+          <input type="text" x-model="ragSource" placeholder="document.txt" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border">
+        </div>
+        <div class="flex items-end">
+          <button @click="ingestDocument()" :disabled="ingesting || !ragText.trim() || !ragCollection.trim()"
+                  class="w-full inline-flex items-center justify-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+            <i class="fas fa-upload mr-2" x-show="!ingesting"></i>
+            <i class="fas fa-spinner fa-spin mr-2" x-show="ingesting"></i>
+            Ingest
+          </button>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Document Text</label>
+        <textarea x-model="ragText" rows="5" placeholder="Paste the document text here..."
+                  class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border"></textarea>
+      </div>
+      <div x-show="ingestResult" x-transition class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+        <i class="fas fa-check-circle mr-1"></i>
+        <span x-text="ingestResult"></span>
+      </div>
+    </div>
+
+    <!-- Ask section -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">
+        <i class="fas fa-search text-purple-500 mr-2"></i>Ask a Question
+      </h2>
+      <div class="flex space-x-3 mb-4">
+        <div class="w-48">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Collection</label>
+          <input type="text" x-model="ragAskCollection" placeholder="knowledge-base" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border">
+        </div>
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Question</label>
+          <div class="flex space-x-3">
+            <input type="text" x-model="ragQuestion" @keydown.enter="askQuestion()"
+                   placeholder="Ask anything about your documents..."
+                   class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border">
+            <button @click="askQuestion()" :disabled="asking || !ragQuestion.trim() || !ragAskCollection.trim()"
+                    class="inline-flex items-center px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
+              <i class="fas fa-search mr-2" x-show="!asking"></i>
+              <i class="fas fa-spinner fa-spin mr-2" x-show="asking"></i>
+              Ask
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Answer -->
+      <div x-show="ragAnswer" x-transition class="space-y-4">
+        <div class="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+          <h3 class="text-sm font-semibold text-purple-800 mb-2"><i class="fas fa-lightbulb mr-1"></i> Answer</h3>
+          <p class="text-sm text-gray-800 whitespace-pre-wrap" x-text="ragAnswer"></p>
+          <p x-show="ragModel" class="mt-2 text-xs text-purple-500" x-text="'Model: ' + ragModel"></p>
+        </div>
+        <div x-show="ragSources.length > 0">
+          <h3 class="text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-file-alt mr-1"></i> Sources</h3>
+          <div class="space-y-2">
+            <template x-for="(src, i) in ragSources" :key="i">
+              <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xs font-medium text-gray-500" x-text="src.metadata?.source || 'Unknown source'"></span>
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700" x-text="'Score: ' + (src.score?.toFixed(3) || 'N/A')"></span>
+                </div>
+                <p class="text-gray-700" x-text="src.text"></p>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vector Stats -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-900">
+          <i class="fas fa-database text-teal-500 mr-2"></i>Vector Store
+        </h2>
+        <button @click="loadVectorStats()" class="text-sm text-purple-600 hover:text-purple-700 font-medium">
+          <i class="fas fa-sync-alt mr-1"></i> Refresh
+        </button>
+      </div>
+      <div x-show="vectorStats" class="space-y-2">
+        <template x-for="(stat, i) in vectorStats" :key="i">
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-layer-group text-teal-500"></i>
+              <span class="text-sm font-medium text-gray-800" x-text="stat.collection"></span>
+            </div>
+            <span class="text-sm text-gray-500" x-text="stat.count + ' vectors'"></span>
+          </div>
+        </template>
+        <p x-show="vectorStats && vectorStats.length === 0" class="text-sm text-gray-400 text-center py-4">No vectors stored yet. Ingest a document above to get started.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== AGENTS TAB ==================== -->
+  <div x-show="activeTab === 'agents'" x-transition class="space-y-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">
+        <i class="fas fa-robot text-orange-500 mr-2"></i>Run an Agent
+      </h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Task Description</label>
+          <textarea x-model="agentTask" rows="3" placeholder="Describe what you want the agent to do, e.g. 'List all collections and count their records'"
+                    class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm px-3 py-2 border"></textarea>
+        </div>
+        <div class="flex items-center space-x-4">
+          <label class="inline-flex items-center text-sm">
+            <input type="checkbox" x-model="agentAllowWrites" class="rounded border-gray-300 text-purple-600 shadow-sm focus:ring-purple-500 mr-2">
+            <span class="text-gray-700">Allow write operations</span>
+            <span class="text-xs text-gray-400 ml-1">(create/update records)</span>
+          </label>
+          <button @click="runAgent()" :disabled="agentRunning || !agentTask.trim()"
+                  class="inline-flex items-center px-5 py-2.5 rounded-lg bg-orange-600 text-white text-sm font-medium hover:bg-orange-700 disabled:opacity-50 transition-colors">
+            <i class="fas fa-play mr-2" x-show="!agentRunning"></i>
+            <i class="fas fa-spinner fa-spin mr-2" x-show="agentRunning"></i>
+            Run Agent
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent Result -->
+    <div x-show="agentAnswer" x-transition class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-3">
+        <i class="fas fa-check-circle text-green-500 mr-2"></i>Agent Result
+      </h2>
+      <div class="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
+        <p class="text-sm text-gray-800 whitespace-pre-wrap" x-text="agentAnswer"></p>
+        <p x-show="agentModel" class="mt-2 text-xs text-green-600" x-text="'Model: ' + agentModel"></p>
+      </div>
+
+      <!-- Steps -->
+      <div x-show="agentSteps.length > 0">
+        <h3 class="text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-list-ol mr-1"></i> Execution Steps</h3>
+        <div class="space-y-2">
+          <template x-for="(step, i) in agentSteps" :key="i">
+            <div class="flex items-start space-x-3 p-3 rounded-lg"
+                 :class="step.type === 'tool_call' ? 'bg-blue-50 border border-blue-100' : step.type === 'tool_result' ? 'bg-gray-50 border border-gray-200' : 'bg-green-50 border border-green-100'">
+              <div class="flex-shrink-0 mt-0.5">
+                <i :class="step.type === 'tool_call' ? 'fas fa-wrench text-blue-500' : step.type === 'tool_result' ? 'fas fa-reply text-gray-500' : 'fas fa-comment text-green-500'" class="text-sm"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium mb-0.5"
+                   :class="step.type === 'tool_call' ? 'text-blue-700' : step.type === 'tool_result' ? 'text-gray-600' : 'text-green-700'"
+                   x-text="step.type === 'tool_call' ? 'Tool Call: ' + step.tool_name : step.type === 'tool_result' ? 'Result from: ' + step.tool_name : 'Answer'">
+                </p>
+                <p class="text-sm text-gray-700 whitespace-pre-wrap break-words" x-text="step.content?.substring(0, 500) + (step.content?.length > 500 ? '...' : '')"></p>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Available Tools -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-3">
+        <i class="fas fa-toolbox text-gray-500 mr-2"></i>Available Tools
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <template x-for="(tool, i) in agentTools" :key="i">
+          <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <i :class="tool.write ? 'fas fa-pen text-orange-500' : 'fas fa-eye text-blue-500'" class="text-sm"></i>
+            <div>
+              <p class="text-sm font-medium text-gray-800" x-text="tool.name"></p>
+              <p class="text-xs text-gray-500" x-text="tool.description"></p>
+            </div>
+            <span x-show="tool.write" class="ml-auto text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">write</span>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const AI_API = '/api/v1/plugins/ai';
+
+function aiPlayground() {
+  return {
+    activeTab: 'chat',
+    status: { configured: false, provider: null, model: null },
+
+    // Configure
+    config: { provider: 'openai', api_key: '', base_url: '', model: '', embed_provider: '', embed_model: '', embed_base_url: '' },
+    configuring: false,
+    configMsg: '',
+    configOk: false,
+
+    // Chat
+    chatMessages: [],
+    chatInput: '',
+    chatLoading: false,
+
+    // RAG
+    ragCollection: 'knowledge-base',
+    ragSource: '',
+    ragText: '',
+    ingesting: false,
+    ingestResult: '',
+    ragAskCollection: 'knowledge-base',
+    ragQuestion: '',
+    asking: false,
+    ragAnswer: '',
+    ragModel: '',
+    ragSources: [],
+    vectorStats: null,
+
+    // Agents
+    agentTask: '',
+    agentAllowWrites: false,
+    agentRunning: false,
+    agentAnswer: '',
+    agentModel: '',
+    agentSteps: [],
+    agentTools: [],
+
+    async init() {
+      await this.loadStatus();
+      this.loadAgentTools();
+      this.loadVectorStats();
+      if (this.status.configured) {
+        this.activeTab = 'chat';
+      } else {
+        this.activeTab = 'configure';
+      }
+    },
+
+    async loadStatus() {
+      try {
+        const resp = await fetch(AI_API + '/status');
+        if (resp.ok) this.status = await resp.json();
+      } catch(e) {}
+    },
+
+    async saveConfig() {
+      this.configuring = true;
+      this.configMsg = '';
+      try {
+        const body = { provider: this.config.provider, api_key: this.config.api_key };
+        if (this.config.base_url) body.base_url = this.config.base_url;
+        if (this.config.model) body.model = this.config.model;
+        if (this.config.embed_provider) {
+          body.embed_provider = this.config.embed_provider;
+          body.embed_model = this.config.embed_model || undefined;
+          body.embed_base_url = this.config.embed_base_url || undefined;
+        }
+
+        const resp = await fetch(AI_API + '/configure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          this.configOk = true;
+          this.configMsg = 'Connected successfully!';
+          await this.loadStatus();
+        } else {
+          this.configOk = false;
+          this.configMsg = data.detail || 'Configuration failed';
+        }
+      } catch(e) {
+        this.configOk = false;
+        this.configMsg = 'Network error: ' + e.message;
+      }
+      this.configuring = false;
+    },
+
+    async sendChat() {
+      const text = this.chatInput.trim();
+      if (!text) return;
+      this.chatMessages.push({ role: 'user', content: text });
+      this.chatInput = '';
+      this.chatLoading = true;
+      this.scrollChat();
+
+      try {
+        const resp = await fetch(AI_API + '/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: this.chatMessages.map(m => ({ role: m.role, content: m.content })),
+          }),
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          this.chatMessages.push({ role: 'assistant', content: data.content });
+        } else {
+          this.chatMessages.push({ role: 'assistant', content: '⚠️ Error: ' + (data.detail || 'Request failed') });
+        }
+      } catch(e) {
+        this.chatMessages.push({ role: 'assistant', content: '⚠️ Network error: ' + e.message });
+      }
+      this.chatLoading = false;
+      this.scrollChat();
+    },
+
+    scrollChat() {
+      this.$nextTick(() => {
+        const el = document.getElementById('chatMessages');
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+    },
+
+    async ingestDocument() {
+      this.ingesting = true;
+      this.ingestResult = '';
+      try {
+        const resp = await fetch(AI_API + '/rag/ingest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            collection: this.ragCollection,
+            text: this.ragText,
+            source: this.ragSource || 'manual-input',
+          }),
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          this.ingestResult = `Ingested "${this.ragSource || 'document'}" — ${data.chunks} chunks embedded into "${data.collection}"`;
+          this.ragText = '';
+          this.ragSource = '';
+          this.loadVectorStats();
+        } else {
+          this.ingestResult = '';
+          showToast(data.detail || 'Ingestion failed', 'error');
+        }
+      } catch(e) {
+        showToast('Network error: ' + e.message, 'error');
+      }
+      this.ingesting = false;
+    },
+
+    async askQuestion() {
+      this.asking = true;
+      this.ragAnswer = '';
+      this.ragSources = [];
+      this.ragModel = '';
+      try {
+        const resp = await fetch(AI_API + '/rag/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            collection: this.ragAskCollection,
+            question: this.ragQuestion,
+          }),
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          this.ragAnswer = data.answer;
+          this.ragSources = data.sources || [];
+          this.ragModel = data.model || '';
+        } else {
+          showToast(data.detail || 'Question failed', 'error');
+        }
+      } catch(e) {
+        showToast('Network error: ' + e.message, 'error');
+      }
+      this.asking = false;
+    },
+
+    async loadVectorStats() {
+      try {
+        const resp = await fetch(AI_API + '/vectors/stats');
+        if (resp.ok) {
+          const data = await resp.json();
+          const cols = data.collections || {};
+          this.vectorStats = Object.entries(cols).map(([name, count]) => ({ collection: name, count }));
+        }
+      } catch(e) {}
+    },
+
+    async runAgent() {
+      this.agentRunning = true;
+      this.agentAnswer = '';
+      this.agentSteps = [];
+      this.agentModel = '';
+      try {
+        const resp = await fetch(AI_API + '/agents/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            task: this.agentTask,
+            allow_writes: this.agentAllowWrites,
+          }),
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          this.agentAnswer = data.answer;
+          this.agentSteps = data.steps || [];
+          this.agentModel = data.model || '';
+        } else {
+          showToast(data.detail || 'Agent failed', 'error');
+        }
+      } catch(e) {
+        showToast('Network error: ' + e.message, 'error');
+      }
+      this.agentRunning = false;
+    },
+
+    async loadAgentTools() {
+      try {
+        const resp = await fetch(AI_API + '/agents/tools');
+        if (resp.ok) {
+          const data = await resp.json();
+          this.agentTools = data.tools || [];
+        }
+      } catch(e) {}
+    },
+  };
+}
+</script>
+{% endblock %}

@@ -20,6 +20,16 @@ from app.db.session import get_db
 ADMIN_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=str(ADMIN_DIR / "templates"))
 
+
+def _get_admin_pages():
+    """Return plugin-registered admin pages for sidebar rendering."""
+    from app.core.plugin_registry import get_registry
+    return get_registry().get_admin_pages()
+
+
+# Make admin_pages callable in all templates: {{ get_admin_pages() }}
+templates.env.globals["get_admin_pages"] = _get_admin_pages
+
 router = APIRouter()
 
 
@@ -382,6 +392,22 @@ async def admin_login(request: Request, db: AsyncSession = Depends(get_db)):
         return RedirectResponse(url="/setup", status_code=302)
 
     return templates.TemplateResponse("login.html", {"request": request})
+
+
+@router.get("/ai", response_class=HTMLResponse)
+async def admin_ai_playground(
+    request: Request,
+    user: UserContext = Depends(require_admin_ui),
+):
+    """AI Playground — only available when AI Core plugin is loaded."""
+    from app.core.plugin_registry import get_registry
+    ids = {p.id for p in get_registry().get_plugins()}
+    if "ai-core" not in ids:
+        raise HTTPException(status_code=404, detail="AI Core plugin not installed")
+    return templates.TemplateResponse(
+        "ai_playground.html",
+        {"request": request, "user": user, "active": "ai"},
+    )
 
 
 @router.get("/setup", response_class=HTMLResponse)

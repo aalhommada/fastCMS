@@ -199,6 +199,18 @@
           Plugins
         </a>
 
+        <!-- Plugin admin pages (dynamic) -->
+        {% set admin_pages = get_admin_pages() %}
+        {% for page in admin_pages %}
+        <a
+          href="{{ page.url }}"
+          class="{% if active == page.nav_id %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors"
+        >
+          <i class="fas {{ page.icon }} w-5 text-center mr-3 text-purple-400"></i>
+          {{ page.label }}
+        </a>
+        {% endfor %}
+
         <!-- Backups -->
         <a
           href="/admin/backups"
