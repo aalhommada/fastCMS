@@ -90,6 +90,7 @@ app = FastAPI(
     description="Open-source Backend-as-a-Service - Built with FastAPI",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/openapi.json" if settings.DEBUG else None,
     default_response_class=ORJSONResponse,  # Use orjson for performance
     lifespan=lifespan,
 )
@@ -109,8 +110,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Requested-With", "Accept"],
 )
 
 # Add rate limiting middleware
@@ -251,7 +252,7 @@ async def root() -> dict[str, str]:
     return {
         "message": f"Welcome to {settings.APP_NAME}",
         "version": settings.APP_VERSION,
-        "docs": "/docs" if settings.DEBUG else "Documentation disabled in production",
+        "docs": "/docs" if settings.DEBUG else None,
     }
 
 

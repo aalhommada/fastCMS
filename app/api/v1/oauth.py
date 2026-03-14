@@ -98,12 +98,14 @@ async def oauth_login(
     # STRATEGY: Use a short-lived cookie to store the intended collection
     response = await client.authorize_redirect(request, redirect_uri)
     if collection:
+        from app.core.config import settings
         response.set_cookie(
             key="oauth_collection",
             value=collection,
-            max_age=300, # 5 minutes
+            max_age=300,  # 5 minutes
             httponly=True,
-            samesite="lax"
+            samesite="lax",
+            secure=settings.is_production,
         )
     return response
 

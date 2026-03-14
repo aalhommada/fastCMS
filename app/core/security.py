@@ -119,6 +119,9 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
     """
     Decode and validate a JWT token.
 
+    Tries the current SECRET_KEY first. If SECRET_KEY_PREVIOUS is set (during key rotation),
+    falls back to the old key so existing tokens remain valid until they expire.
+
     Args:
         token: JWT token string to decode
 
@@ -129,6 +132,15 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
     except JWTError:
+        # Try previous key during rotation period
+        if settings.SECRET_KEY_PREVIOUS:
+            try:
+                payload = jwt.decode(
+                    token, settings.SECRET_KEY_PREVIOUS, algorithms=[settings.ALGORITHM]
+                )
+                return payload
+            except JWTError:
+                pass
         return None
 
 
@@ -221,15 +233,14 @@ def verify_file_token(token: str, file_id: str) -> Optional[str]:
     Returns:
         user_id if valid, None otherwise
     """
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        if payload.get("type") != "file_access":
-            return None
-        if payload.get("file_id") != file_id:
-            return None
-        return payload.get("sub")
-    except JWTError:
+    payload = decode_token(token)
+    if not payload:
         return None
+    if payload.get("type") != "file_access":
+        return None
+    if payload.get("file_id") != file_id:
+        return None
+    return payload.get("sub")
 
 
 def verify_token_type(payload: Dict[str, Any], expected_type: str) -> bool:
