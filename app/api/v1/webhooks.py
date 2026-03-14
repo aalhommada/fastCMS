@@ -10,6 +10,8 @@ from app.core.exceptions import NotFoundException
 from app.db.session import get_db
 from app.schemas.webhook import (
     WebhookCreate,
+    WebhookDeliveryListResponse,
+    WebhookDeliveryResponse,
     WebhookListResponse,
     WebhookResponse,
     WebhookUpdate,
@@ -69,6 +71,28 @@ async def list_webhooks(
     return WebhookListResponse(
         items=[WebhookResponse.model_validate(w) for w in webhooks],
         total=len(webhooks),
+    )
+
+
+# Static path MUST come before parameterized /webhooks/{webhook_id} routes
+@router.get(
+    "/webhooks/deliveries/recent",
+    response_model=WebhookDeliveryListResponse,
+    summary="Recent webhook deliveries",
+)
+async def list_recent_deliveries(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    user_context: UserContext = Depends(require_auth_context),
+) -> WebhookDeliveryListResponse:
+    """List recent delivery logs across all webhooks."""
+    service = WebhookService(db)
+    deliveries = await service.list_deliveries(skip=skip, limit=limit)
+    total = await service.count_deliveries()
+    return WebhookDeliveryListResponse(
+        items=[WebhookDeliveryResponse.model_validate(d) for d in deliveries],
+        total=total,
     )
 
 
@@ -145,3 +169,29 @@ async def delete_webhook(
 
     if not success:
         raise NotFoundException(f"Webhook '{webhook_id}' not found")
+
+
+@router.get(
+    "/webhooks/{webhook_id}/deliveries",
+    response_model=WebhookDeliveryListResponse,
+    summary="List webhook deliveries",
+)
+async def list_webhook_deliveries(
+    webhook_id: str = Path(..., description="Webhook ID"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    user_context: UserContext = Depends(require_auth_context),
+) -> WebhookDeliveryListResponse:
+    """List delivery logs for a specific webhook."""
+    service = WebhookService(db)
+    webhook = await service.get_webhook(webhook_id)
+    if not webhook:
+        raise NotFoundException(f"Webhook '{webhook_id}' not found")
+
+    deliveries = await service.list_deliveries(webhook_id=webhook_id, skip=skip, limit=limit)
+    total = await service.count_deliveries(webhook_id=webhook_id)
+    return WebhookDeliveryListResponse(
+        items=[WebhookDeliveryResponse.model_validate(d) for d in deliveries],
+        total=total,
+    )

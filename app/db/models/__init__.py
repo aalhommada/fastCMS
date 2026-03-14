@@ -4,5 +4,6 @@ from app.db.models.user import User, RefreshToken
 from app.db.models.collection import Collection
 from app.db.models.file import File
 from app.db.models.ip_rule import IPRule
+from app.db.models.webhook_delivery import WebhookDelivery
 
-__all__ = ["Base", "BaseModel", "User", "RefreshToken", "Collection", "File", "IPRule"]
+__all__ = ["Base", "BaseModel", "User", "RefreshToken", "Collection", "File", "IPRule", "WebhookDelivery"]

@@ -52,3 +52,30 @@ class WebhookListResponse(BaseModel):
 
     items: List[WebhookResponse]
     total: int
+
+
+class WebhookDeliveryResponse(BaseModel):
+    """Schema for a webhook delivery log entry."""
+
+    id: str
+    webhook_id: str
+    event_type: str
+    record_id: str
+    url: str
+    status_code: Optional[int]
+    response_body: Optional[str]
+    attempt: int
+    success: bool
+    duration_ms: Optional[int]
+    error: Optional[str]
+    created: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class WebhookDeliveryListResponse(BaseModel):
+    """Schema for paginated delivery log list."""
+
+    items: List[WebhookDeliveryResponse]
+    total: int
