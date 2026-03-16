@@ -1,8 +1,10 @@
 """
-Project initialization command
+Project initialization command — scaffolds a complete FastCMS project.
 """
 import os
+import secrets
 import shutil
+
 import click
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -32,6 +34,9 @@ def init(project_name: str, database: str, template: str):
         console.print(f"[red]Error:[/red] Directory '{project_name}' already exists")
         return
 
+    # Generate a secure SECRET_KEY
+    secret_key = secrets.token_hex(32)
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -43,8 +48,31 @@ def init(project_name: str, database: str, template: str):
         os.makedirs(project_name)
         os.makedirs(f"{project_name}/data")
         os.makedirs(f"{project_name}/data/files")
+        os.makedirs(f"{project_name}/plugins", exist_ok=True)
+        os.makedirs(f"{project_name}/hooks", exist_ok=True)
+
+        progress.update(task, description="Copying migrations...")
+
+        # Copy migrations and alembic.ini from bundled resources
+        try:
+            from app._bundled import get_alembic_ini, get_migrations_dir
+
+            migrations_src = get_migrations_dir()
+            shutil.copytree(str(migrations_src), f"{project_name}/migrations")
+
+            alembic_ini_src = get_alembic_ini()
+            shutil.copy2(str(alembic_ini_src), f"{project_name}/alembic.ini")
+        except (ImportError, FileNotFoundError) as e:
+            console.print(f"\n[yellow]Warning:[/yellow] Could not copy migrations: {e}")
+            console.print("[dim]You can copy migrations manually from the FastCMS repository.[/dim]")
 
         progress.update(task, description="Creating configuration files...")
+
+        # Database URL based on choice
+        if database == "sqlite":
+            db_url = "sqlite+aiosqlite:///./data/app.db"
+        else:
+            db_url = "postgresql+asyncpg://user:password@localhost:5432/fastcms"
 
         # Create .env file
         env_content = f"""# FastCMS Configuration
@@ -59,10 +87,10 @@ ENVIRONMENT=development
 BASE_URL=http://localhost:8000
 
 # Database
-DATABASE_URL={'sqlite+aiosqlite:///./data/app.db' if database == 'sqlite' else 'postgresql+asyncpg://user:password@localhost:5432/fastcms'}
+DATABASE_URL={db_url}
 
 # Security
-SECRET_KEY=your-secret-key-here-change-this-in-production
+SECRET_KEY={secret_key}
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=30
@@ -111,10 +139,9 @@ FastCMS project created with the FastCMS CLI.
 
 ## Getting Started
 
-1. Install dependencies:
+1. Navigate to your project:
    ```bash
    cd {project_name}
-   pip install fastcms[ai,dev]
    ```
 
 2. Update the `.env` file with your configuration
@@ -124,44 +151,38 @@ FastCMS project created with the FastCMS CLI.
    fastcms migrate up
    ```
 
-4. Start the development server:
+4. Create an admin user:
+   ```bash
+   fastcms create-admin
+   ```
+
+5. Start the development server:
    ```bash
    fastcms dev
    ```
 
-5. Visit http://localhost:8000/docs for API documentation
+## Access
 
-## Admin Access
+- Admin Dashboard: http://localhost:8000/admin
+- API Documentation: http://localhost:8000/docs (debug mode only)
+- Health Check: http://localhost:8000/health
 
-Create an admin user:
-```bash
-fastcms users create admin@example.com --admin --password yourpassword
+## Project Structure
+
 ```
-
-Then visit http://localhost:8000/admin to access the admin dashboard.
+{project_name}/
+  .env              # Configuration
+  alembic.ini       # Database migration config
+  data/             # Database and uploaded files
+  migrations/       # Database migration scripts
+  plugins/          # Custom plugins (drop-in)
+  hooks/            # Custom hooks (drop-in)
+```
 
 ## Documentation
 
-- API Docs: http://localhost:8000/docs
-- Admin Dashboard: http://localhost:8000/admin
 - Full Documentation: https://docs.fastcms.dev
-
-## Features
-
-- 🚀 Dynamic Collections & Records
-- 🔐 Authentication & Authorization
-- 📁 File Storage (Local/S3)
-- ⚡ Real-time Subscriptions
-- 🔍 Full-Text Search
-- 🪝 Webhooks
-- 🤖 AI-powered features
-- 📊 Admin Dashboard
-
-## Support
-
 - GitHub: https://github.com/fastcms/fastcms
-- Issues: https://github.com/fastcms/fastcms/issues
-- Docs: https://docs.fastcms.dev
 """
         with open(f"{project_name}/README.md", "w", encoding="utf-8") as f:
             f.write(readme_content)
@@ -183,6 +204,8 @@ data/
 .env
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 
 # IDE
 .vscode/
@@ -202,33 +225,15 @@ Thumbs.db
 
         progress.update(task, description="Project created successfully!")
 
-    console.print(f"\n[bold green]✓ Success![/bold green] Project '{project_name}' created successfully!\n")
+    console.print(f"\n[bold green]Success![/bold green] Project '{project_name}' created.\n")
 
-    console.print("[bold cyan]═══════════════════════════════════════════[/bold cyan]")
-    console.print("[bold cyan]          🎉 Project Ready!               [/bold cyan]")
-    console.print("[bold cyan]═══════════════════════════════════════════[/bold cyan]\n")
+    console.print("[bold]Quick Start:[/bold]\n")
+    console.print(f"  1. [bold cyan]cd {project_name}[/bold cyan]")
+    console.print(f"  2. [bold cyan]fastcms migrate up[/bold cyan]       [dim]# Create database tables[/dim]")
+    console.print(f"  3. [bold cyan]fastcms create-admin[/bold cyan]     [dim]# Create admin user[/dim]")
+    console.print(f"  4. [bold cyan]fastcms dev[/bold cyan]              [dim]# Start development server[/dim]\n")
 
-    console.print("[bold]Quick Start Guide:[/bold]\n")
-    console.print(f"  1️⃣  Navigate to your project:")
-    console.print(f"      [bold cyan]cd {project_name}[/bold cyan]\n")
-
-    console.print(f"  2️⃣  Review and update your configuration:")
-    console.print(f"      [bold cyan]nano .env[/bold cyan]  [dim](or use your favorite editor)[/dim]\n")
-
-    console.print(f"  3️⃣  Run database migrations:")
-    console.print(f"      [bold cyan]fastcms migrate up[/bold cyan]\n")
-
-    console.print(f"  4️⃣  Start the development server:")
-    console.print(f"      [bold cyan]fastcms dev[/bold cyan]\n")
-
-    console.print("[dim]The server will prompt you to create an admin user on first run![/dim]\n")
-
-    console.print("[bold]Or create an admin user now:[/bold]")
-    console.print(f"      [bold cyan]cd {project_name} && fastcms users create --interactive[/bold cyan]\n")
-
-    console.print("[bold]Useful Links:[/bold]")
-    console.print(f"  • API Docs: [link]http://localhost:8000/docs[/link]")
-    console.print(f"  • Admin Dashboard: [link]http://localhost:8000/admin[/link]")
-    console.print(f"  • Health Check: [link]http://localhost:8000/health[/link]\n")
-
-    console.print("[dim]Need help? Check out USER_GUIDE.md in your project![/dim]\n")
+    console.print("[bold]Access:[/bold]")
+    console.print(f"  Admin Dashboard: [link]http://localhost:8000/admin[/link]")
+    console.print(f"  API Docs:        [link]http://localhost:8000/docs[/link]")
+    console.print(f"  Health Check:    [link]http://localhost:8000/health[/link]\n")

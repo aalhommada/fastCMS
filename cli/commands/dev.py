@@ -49,7 +49,7 @@ def prompt_create_admin():
         import sys
         # Run the interactive user creation
         result = subprocess.run(
-            [sys.executable, "-m", "cli.main", "users", "create", "--interactive"],
+            ["fastcms", "create-admin"],
             check=False
         )
         if result.returncode == 0:

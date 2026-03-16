@@ -115,23 +115,18 @@ SQLite is great for dev but PostgreSQL needed for production.
 - Connection pooling config
 - **Effort:** Medium
 
-#### 1.4 Environment & Security Hardening
-- [ ] Secret rotation support
-- [ ] CORS configuration (currently permissive)
-- [ ] Remove debug mode protections (Swagger UI in production)
-- [ ] Secure cookie settings (HttpOnly, Secure, SameSite=Strict)
-- [ ] Rate limit config tuning for production
-- **Effort:** Small-Medium
+#### ~~1.4 Environment & Security Hardening~~ DONE
+- [x] Secret rotation — `SECRET_KEY_PREVIOUS` env var, `decode_token` tries both keys; `verify_file_token` reuses `decode_token`
+- [x] CORS — Restricted `allow_methods` and `allow_headers` to explicit lists (was `["*"]`)
+- [x] OpenAPI schema disabled in production — `openapi_url=None` when `DEBUG=False` (was leaking full API surface)
+- [x] Secure cookies — OAuth cookie gets `secure=True` in production; session cookie already had `https_only=is_production`
+- [x] Rate limits — Already role-based with endpoint-specific limits (login: 10/min, register: 5/min); no changes needed
 
 ### Priority 2 — Missing Features for Competitive Parity
 
-#### 2.1 File Upload in RAG Plugin
-Currently RAG only accepts text. Should support:
-- PDF upload + text extraction
-- Markdown/HTML parsing
-- File upload endpoint that auto-ingests
-- **Files:** `plugins/ai_rag/routes.py`, new `plugins/ai_rag/extractors.py`
-- **Effort:** Medium
+#### ~~2.1 File Upload in RAG Plugin~~ DONE
+Added multipart file upload to the RAG plugin. `POST /upload` accepts .txt, .md, .html, .csv, .json, .pdf (max 10MB). Pure-Python text extractors (no extra deps except optional PyPDF2 for PDF). Admin UI updated with "Paste Text" / "Upload File" toggle in the RAG tab. 26 new tests (9 upload endpoint + 17 extractor tests).
+- **Files:** `plugins/ai_rag/extractors.py` (NEW), `plugins/ai_rag/routes.py` (updated), `app/admin/templates/ai_playground.html` (updated)
 
 #### 2.2 OAuth Enhancements
 - [ ] PKCE support for mobile/SPA clients
@@ -139,11 +134,14 @@ Currently RAG only accepts text. Should support:
 - [ ] Custom OAuth provider configuration via admin UI
 - **Effort:** Medium
 
-#### 2.3 Webhook Improvements
-- [ ] Signed webhook payloads (HMAC-SHA256)
-- [ ] Retry with exponential backoff
-- [ ] Delivery status tracking and logs
-- **Effort:** Medium
+#### ~~2.3 Webhook Improvements~~ DONE
+- [x] Signed webhook payloads — `X-Webhook-Signature: sha256=<hex>` header (HMAC-SHA256, already existed, improved with `sha256=` prefix)
+- [x] Retry with exponential backoff — delays: 1s, 2s, 4s, 8s... capped at 30s (`BACKOFF_BASE`, `BACKOFF_MAX`)
+- [x] Delivery status tracking — new `webhook_deliveries` table, logs every attempt with status_code, duration_ms, error, response_body (truncated 500 chars)
+- [x] API endpoints: `GET /webhooks/{id}/deliveries`, `GET /webhooks/deliveries/recent`
+- [x] Admin UI: "Logs" button per webhook opens delivery log modal; "Signed" column shows lock icon
+- [x] 19 new tests (signature, backoff delays, backoff cap, delivery logging, event filtering)
+- [x] Alembic migration `20260314_007`
 
 #### 2.4 Field-Level Encryption
 - Encrypt sensitive fields at rest
@@ -160,12 +158,20 @@ Currently RAG only accepts text. Should support:
 
 ### Priority 3 — Developer Experience
 
-#### 3.1 CLI Improvements
-- `fastcms init` — project scaffolding (already exists, needs polish)
-- `fastcms plugin install <name>` — install from fastcms-plugins repo
-- `fastcms plugin create <name>` — scaffold a new plugin
-- `fastcms migrate` — run Alembic migrations
-- `fastcms seed` — seed demo data
+#### ~~3.1 pip-installable Package & CLI~~ DONE
+- [x] `pip install pyfastcms` → `fastcms init my-project` → `fastcms dev` workflow
+- [x] Package name: `pyfastcms` on PyPI, CLI command remains `fastcms`
+- [x] Unified CLI entry point (`cli/entry.py`) with lazy imports (works before .env exists)
+- [x] Bundled resource locator (`app/_bundled/`) — migrations & alembic.ini in wheel
+- [x] `fastcms init` scaffolds complete project (migrations, plugins/, hooks/, .env with generated SECRET_KEY)
+- [x] `fastcms migrate up` detects fresh DB → create_all + stamp head (no incremental migration on empty DB)
+- [x] Hatchling build: `force-include` bundles migrations & alembic.ini into wheel
+- [x] 13 new tests (`tests/unit/test_pip_install.py`)
+
+#### 3.1b CLI Improvements (Remaining)
+- [ ] `fastcms plugin install <name>` — install from fastcms-plugins repo
+- [ ] `fastcms plugin create <name>` — scaffold a new plugin
+- [ ] `fastcms seed` — seed demo data
 - **Effort:** Medium
 
 #### 3.2 SDK Publishing
@@ -198,7 +204,8 @@ Currently RAG only accepts text. Should support:
 - **Effort:** Medium
 
 #### 4.2 RAG Improvements
-- PDF/DOCX file upload support
+- ~~PDF file upload support~~ (done in 2.1)
+- DOCX file upload support
 - Chunking strategy configuration (size, overlap, method)
 - Collection-aware RAG (auto-ingest when records are created)
 - Hybrid search (FTS5 + semantic)
@@ -315,6 +322,6 @@ http://localhost:8000/docs
 
 ## Known Issues
 - `tests/unit/test_field_types.py` — 20 pre-existing test failures (RelationOptions schema mismatch). Not related to recent work.
-- AI plugin config is runtime-only — needs persistence to `plugin_settings` table.
+- ~~AI plugin config is runtime-only~~ — Fixed, persisted to `plugin_settings` table.
 - Admin UI uses Tailwind CDN — should be bundled for production.
 - Rate limiter uses in-memory storage — needs Redis for multi-instance.
