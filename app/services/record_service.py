@@ -170,8 +170,8 @@ class RecordService:
 
         # Get total count (skip if requested for performance)
         if skip_total:
-            total = -1  # Indicate total was skipped
-            total_pages = -1
+            total = None
+            total_pages = None
         else:
             total = await self.repo.count(
                 filters=filters,

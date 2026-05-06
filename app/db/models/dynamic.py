@@ -162,10 +162,27 @@ class DynamicModelGenerator:
         Args:
             collection_name: Specific collection to clear, or None for all
         """
+        # Also drop the Table from SQLAlchemy's MetaData. Without this, the
+        # next create_model call uses extend_existing=True against the stale
+        # Table — which only ADDS columns, so dropped columns linger and
+        # subsequent INSERTs fail referencing columns that no longer exist
+        # on disk. Only remove tables we know we created (tracked via the
+        # cache) so we never touch system tables like users/settings.
+        from app.db.base import metadata as _md
+
+        names_to_drop = (
+            [collection_name] if collection_name else list(cls._model_cache.keys())
+        )
+
         if collection_name:
             cls._model_cache.pop(collection_name, None)
         else:
             cls._model_cache.clear()
+
+        for name in names_to_drop:
+            tbl = _md.tables.get(name)
+            if tbl is not None:
+                _md.remove(tbl)
 
     @classmethod
     async def create_table(

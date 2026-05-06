@@ -47,10 +47,10 @@ class RecordListResponse(BaseModel):
     """Schema for paginated record list."""
 
     items: List[RecordResponse]
-    total: int
+    total: Optional[int] = None
     page: int
     per_page: int
-    total_pages: int
+    total_pages: Optional[int] = None
 
 
 class RecordFilter(BaseModel):

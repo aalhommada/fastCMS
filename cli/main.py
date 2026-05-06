@@ -44,13 +44,15 @@ def info():
 
 
 # Import command groups
-from cli.commands import dev, init, migrate, collections, users
+from cli.commands import dev, init, migrate, collections, users, plugin, seed
 
 cli.add_command(init.init)
 cli.add_command(dev.dev)
 cli.add_command(migrate.migrate)
 cli.add_command(collections.collections)
 cli.add_command(users.users)
+cli.add_command(plugin.plugin)
+cli.add_command(seed.seed)
 
 
 if __name__ == "__main__":

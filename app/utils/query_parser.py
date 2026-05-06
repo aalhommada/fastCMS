@@ -482,7 +482,11 @@ class QueryParser:
         if value_str.startswith("@"):
             datetime_value = cls._parse_datetime_macro(value_str)
             if datetime_value is not None:
-                return datetime_value.isoformat()
+                # Return datetime object so SQLAlchemy binds it as a real
+                # parameter. Returning .isoformat() produces 'T'-separated
+                # text that mismatches SQLite's space-separated DATETIME
+                # storage and breaks same-day comparisons.
+                return datetime_value
 
         # Boolean
         if value_str.lower() == "true":

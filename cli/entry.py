@@ -395,10 +395,14 @@ try:
     from cli.commands.dev import dev
     from cli.commands.init import init
     from cli.commands.migrate import migrate
+    from cli.commands.plugin import plugin
+    from cli.commands.seed import seed
 
     cli.add_command(dev)
     cli.add_command(init)
     cli.add_command(migrate)
+    cli.add_command(plugin)
+    cli.add_command(seed)
 except ImportError:
     pass  # cli module not available (e.g., standalone script usage)
 
