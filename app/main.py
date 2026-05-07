@@ -278,7 +278,7 @@ if settings.IP_FILTER_ENABLED:
 from app.admin import routes as admin_routes
 from app.api.v1 import (
     admin, api_keys, audit, auth, auth_collections, backup, backups, batch, collections, files,
-    health, logs, oauth, oauth_providers, realtime, records, search,
+    health, hooks, logs, oauth, oauth_providers, realtime, records, search,
     settings as settings_router, setup, views, webhooks
 )
 from app.api.v1.metrics_api import router as metrics_router
@@ -306,6 +306,7 @@ app.include_router(backups.router, prefix="/api/v1", tags=["Backups"])
 # app.include_router(backup.router, prefix="/api/v1", tags=["Backup"])  # Disabled: conflicts with backups.router which provides paginated response
 app.include_router(realtime.router, prefix="/api/v1", tags=["Real-time"])
 app.include_router(webhooks.router, prefix="/api/v1", tags=["Webhooks"])
+app.include_router(hooks.router, prefix="/api/v1", tags=["Hooks"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(metrics_router, prefix="/api/v1/admin", tags=["Metrics"])
 app.include_router(plugins_router, prefix="/api/v1/admin", tags=["Plugins"])

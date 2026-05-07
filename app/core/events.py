@@ -212,10 +212,10 @@ class EventBroadcaster:
         Runs in background to not block the main flow.
         """
         try:
-            from app.db.session import async_session_maker
+            from app.db.session import AsyncSessionLocal
             from app.services.webhook_service import WebhookService
 
-            async with async_session_maker() as db:
+            async with AsyncSessionLocal() as db:
                 webhook_service = WebhookService(db)
                 await webhook_service.deliver_event(
                     collection_name=event.collection_name,

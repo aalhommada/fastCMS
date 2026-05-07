@@ -118,20 +118,31 @@ class WebhookService:
     # Delivery
     # ------------------------------------------------------------------
 
+    # Map internal EventType.value (e.g. "record.created") to the public
+    # webhook event names ("create", "update", "delete") used by the API
+    # contract and documented payloads.
+    _PUBLIC_EVENT_MAP = {
+        "record.created": "create",
+        "record.updated": "update",
+        "record.deleted": "delete",
+    }
+
     async def deliver_event(
         self, collection_name: str, event_type: str, record_id: str, data: Dict[str, Any]
     ) -> None:
         """Deliver webhook event to all subscribed webhooks."""
+        public_event = self._PUBLIC_EVENT_MAP.get(event_type, event_type)
+
         webhooks = await self.repo.get_by_collection(collection_name, active_only=True)
 
         for webhook in webhooks:
             # Check if webhook is subscribed to this event type
             subscribed_events = webhook.events.split(",")
-            if event_type not in subscribed_events and "*" not in subscribed_events:
+            if public_event not in subscribed_events and "*" not in subscribed_events:
                 continue
 
             # Deliver webhook asynchronously
-            await self._deliver_webhook(webhook, event_type, record_id, data)
+            await self._deliver_webhook(webhook, public_event, record_id, data)
 
     async def _deliver_webhook(
         self, webhook: Webhook, event_type: str, record_id: str, data: Dict[str, Any]
@@ -145,12 +156,15 @@ class WebhookService:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
+        # Serialize once and POST the exact same bytes we sign — using
+        # `json=payload` would let httpx re-serialize with different
+        # separators/key-order, breaking signature verification.
+        payload_bytes = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json"}
 
         # Add HMAC-SHA256 signature if secret is configured
-        payload_str = json.dumps(payload)
         if webhook.secret:
-            signature = self._generate_signature(payload_str, webhook.secret)
+            signature = self._generate_signature(payload_bytes, webhook.secret)
             headers["X-Webhook-Signature"] = f"sha256={signature}"
 
         # Try delivery with retries + exponential backoff
@@ -168,28 +182,38 @@ class WebhookService:
             status_code = None
             response_body = None
             error_msg = None
+            permanent_failure = False
 
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     response = await client.post(
-                        webhook.url, json=payload, headers=headers
+                        webhook.url, content=payload_bytes, headers=headers
                     )
                     status_code = response.status_code
                     response_body = response.text[:500]  # truncate
 
-                    if response.status_code < 500:
-                        success = True
-                        webhook.last_triggered_at = datetime.now(timezone.utc).isoformat()
-                        await self.repo.update(webhook)
+                    # 2xx/3xx = success. 4xx = permanent failure (do not
+                    # retry but log as failed, per docs). 5xx = transient
+                    # failure (retry, log as failed).
+                    webhook.last_triggered_at = datetime.now(timezone.utc).isoformat()
+                    await self.repo.update(webhook)
 
-                        if response.status_code >= 400:
-                            logger.warning(
-                                f"Webhook {webhook.id} returned {response.status_code}"
-                            )
-                        else:
-                            logger.info(
-                                f"Webhook delivered successfully to {webhook.url}"
-                            )
+                    if response.status_code < 400:
+                        success = True
+                        logger.info(
+                            f"Webhook delivered successfully to {webhook.url}"
+                        )
+                    elif response.status_code < 500:
+                        # Permanent failure — break out of retry loop but
+                        # leave success=False so the delivery log is honest.
+                        logger.warning(
+                            f"Webhook {webhook.id} returned {response.status_code} (no retry)"
+                        )
+                        permanent_failure = True
+                    else:
+                        logger.warning(
+                            f"Webhook {webhook.id} returned {response.status_code} (will retry)"
+                        )
 
             except Exception as e:
                 error_msg = str(e)
@@ -215,7 +239,7 @@ class WebhookService:
             await self.delivery_repo.create(delivery)
             await self.db.commit()
 
-            if success:
+            if success or permanent_failure:
                 break
 
             if attempt == webhook.retry_count:
@@ -248,8 +272,13 @@ class WebhookService:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _generate_signature(payload: str, secret: str) -> str:
-        """Generate HMAC-SHA256 signature for webhook payload."""
-        return hmac.new(
-            secret.encode(), payload.encode(), hashlib.sha256
-        ).hexdigest()
+    def _generate_signature(payload, secret: str) -> str:
+        """Generate HMAC-SHA256 signature for webhook payload.
+
+        Accepts ``bytes`` (preferred — sign exactly what gets sent) or
+        ``str`` (encoded as UTF-8). Both forms produce the same signature
+        for the same logical content.
+        """
+        if isinstance(payload, str):
+            payload = payload.encode("utf-8")
+        return hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()

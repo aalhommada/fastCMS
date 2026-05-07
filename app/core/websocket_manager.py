@@ -336,11 +336,18 @@ class ConnectionManager:
                 if not self._running:
                     break
 
-                # Determine collection from channel name
+                # Two channels carry every event:
+                #   collection:X   → for connections subscribed to a specific collection
+                #   global:events  → for connections subscribed to "*"
+                # Each connection should receive the event ONCE — dispatch by
+                # channel type so we don't double-deliver to a connection that
+                # is subscribed both ways.
                 if channel.startswith("collection:"):
-                    collection = channel[11:]  # Remove "collection:" prefix
+                    collection = channel[11:]
+                    is_global_channel = False
                 elif channel == "global:events":
-                    collection = "*"
+                    collection = event_dict.get("collection", "")
+                    is_global_channel = True
                 else:
                     continue
 
@@ -348,9 +355,21 @@ class ConnectionManager:
                 async with self._lock:
                     connections = list(self._connections.values())
 
-                # Deliver to matching connections
+                # Deliver to matching connections — but only those whose
+                # subscription mode matches this channel.
                 for conn in connections:
-                    if conn.matches_event(collection if collection != "*" else event_dict.get("collection", ""), event_dict):
+                    if is_global_channel:
+                        if not conn.is_global_subscriber:
+                            continue
+                    else:
+                        # Specific-collection channel: skip global subscribers
+                        # (they get the event via global:events instead).
+                        if conn.is_global_subscriber:
+                            continue
+                        if collection not in conn.subscriptions:
+                            continue
+
+                    if conn.matches_event(collection, event_dict):
                         await conn.send_json({
                             "type": "event",
                             "data": event_dict,
