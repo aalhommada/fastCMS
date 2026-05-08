@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-05-08
+
+Documentation-only patch release. No code changes.
+
+### Changed
+
+- **README rewritten** to lead with `pip install pyfastcms` and the
+  `fastcms` CLI (the previous README walked users through `git clone` and
+  manual venv setup, which is the wrong audience for the pypi page).
+- New tagline: *"The modular Python BaaS — auth, realtime, files, dynamic
+  collections. AI via plugins, install only what you need."*
+- Quick-start curl examples now use the correct `{"data": {...}}` envelope
+  (the previous examples sent fields at the top level, which doesn't match
+  the actual API contract).
+- AI section consolidated to a single block with the working
+  `fastcms plugin install ai-core` command, replacing two scattered "AI
+  Features (via Plugins)" mentions.
+- Added install paths for cloud-storage extras (`pyfastcms[s3]`,
+  `pyfastcms[azure]`, `pyfastcms[storage]`) and Docker.
+
 ## [0.1.1] — 2026-05-08
 
 A patch release that fixes critical bugs in the event spine (webhooks +

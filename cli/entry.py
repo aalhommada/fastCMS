@@ -25,7 +25,7 @@ if (_source_root / "app" / "main.py").exists() and str(_source_root) not in sys.
 
 
 @click.group()
-@click.version_option(version="0.1.1", prog_name="FastCMS CLI")
+@click.version_option(version="0.1.2", prog_name="FastCMS CLI")
 def cli():
     """
     FastCMS Command Line Interface

@@ -1,6 +1,6 @@
 [project]
 name = "pyfastcms"
-version = "0.1.1"
+version = "0.1.2"
 description = "Open-source Backend-as-a-Service built with FastAPI"
 authors = [{ name = "FastCMS Team", email = "team@fastcms.dev" }]
 readme = "README.md"
