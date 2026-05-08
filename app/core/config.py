@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # Application
     APP_NAME: str = "FastCMS"
-    APP_VERSION: str = "0.1.0"
+    APP_VERSION: str = "0.1.1"
     APP_HOST: str = "0.0.0.0"
     APP_PORT: int = 8000
     BASE_URL: str = "http://localhost:8000"
