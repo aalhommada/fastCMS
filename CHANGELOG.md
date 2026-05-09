@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-05-08
+
+Documentation-only patch fixing docs URLs in the package README.
+
+### Fixed
+
+- README now points to the correct docs site (`fastcms.org`) instead of
+  `fastcms.dev`. Affects 10 doc links plus the "Full docs" reference.
+  All other content unchanged from 0.1.2.
+
 ## [0.1.2] — 2026-05-08
 
 Documentation-only patch release. No code changes.

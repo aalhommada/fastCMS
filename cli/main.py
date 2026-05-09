@@ -9,7 +9,7 @@ console = Console()
 
 
 @click.group()
-@click.version_option(version="0.1.2", prog_name="FastCMS")
+@click.version_option(version="0.1.3", prog_name="FastCMS")
 def cli():
     """
     FastCMS - AI-Native Backend-as-a-Service CLI
@@ -25,7 +25,7 @@ def info():
     console.print(
         Panel.fit(
             "[bold cyan]FastCMS - AI-Native Backend-as-a-Service[/bold cyan]\n"
-            "[dim]Version: 0.1.2[/dim]\n"
+            "[dim]Version: 0.1.3[/dim]\n"
             "[dim]Python-based Backend-as-a-Service with AI capabilities[/dim]\n\n"
             "[yellow]Features:[/yellow]\n"
             "  • Dynamic Collections & Records\n"

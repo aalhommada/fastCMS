@@ -129,7 +129,7 @@ curl "http://localhost:8000/api/v1/collections/posts/records?sort=-created" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-See [docs.fastcms.dev](https://fastcms.dev/docs/core-concepts/records) for
+See [fastcms.org](https://fastcms.org/docs/core-concepts/records) for
 the full filter operator list (`=`, `!=`, `>`, `>=`, `<`, `<=`, `~`,
 `?=`), date macros (`@today`, `@day-7`), expansion, and pagination.
 
@@ -212,16 +212,16 @@ SMTP, S3, and Azure settings.
 
 ## Documentation
 
-Full docs: <https://fastcms.dev>
+Full docs: <https://fastcms.org>
 
 Highlights:
-- [Getting started](https://fastcms.dev/docs/getting-started)
-- [Collections, records, fields](https://fastcms.dev/docs/core-concepts/collections)
-- [Real-time](https://fastcms.dev/docs/realtime/overview)
-- [Webhooks](https://fastcms.dev/docs/realtime/webhooks)
-- [Hooks](https://fastcms.dev/docs/advanced/hooks)
-- [AI plugins](https://fastcms.dev/docs/plugins/overview)
-- [Plugin development](https://fastcms.dev/docs/plugins/plugin-development)
+- [Getting started](https://fastcms.org/docs/getting-started)
+- [Collections, records, fields](https://fastcms.org/docs/core-concepts/collections)
+- [Real-time](https://fastcms.org/docs/realtime/overview)
+- [Webhooks](https://fastcms.org/docs/realtime/webhooks)
+- [Hooks](https://fastcms.org/docs/advanced/hooks)
+- [AI plugins](https://fastcms.org/docs/plugins/overview)
+- [Plugin development](https://fastcms.org/docs/plugins/plugin-development)
 
 ---
 
@@ -235,7 +235,7 @@ plugins only if you want them.
 
 **Can I add my own field types or endpoints?** Yes — write a plugin and
 drop it in `plugins/`. See the
-[plugin development guide](https://fastcms.dev/docs/plugins/plugin-development).
+[plugin development guide](https://fastcms.org/docs/plugins/plugin-development).
 
 **Is it production-ready?** The current release is `0.1.x` — APIs may
 still evolve before `1.0`. Several teams run it in production today; see
