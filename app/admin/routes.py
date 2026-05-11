@@ -251,11 +251,19 @@ async def admin_plugins(
 ):
     """Plugins management page — lists all loaded plugin packages."""
     from app.core.plugin_registry import get_registry
+    registry = get_registry()
+    # Map plugin_id → admin URL so the template can show an "Open"
+    # button only for plugins that register their own admin page.
+    admin_pages = {p.plugin_id: p.url for p in registry.get_admin_pages()}
     return templates.TemplateResponse(
         request,
         "plugins.html",
-        {"user": user, "active": "plugins",
-         "plugins": get_registry().get_plugins()},
+        {
+            "user": user,
+            "active": "plugins",
+            "plugins": registry.get_plugins(),
+            "admin_pages": admin_pages,
+        },
     )
 
 

@@ -1,7 +1,8 @@
 # FastCMS
 
-> The modular Python BaaS — auth, realtime, files, dynamic collections.
-> AI via plugins, install only what you need.
+> The **AI-native** Python BaaS — RAG, vector search, and autonomous
+> agents on top of auth, real-time, files, and dynamic collections.
+> Modular by design: AI extensions plug in, never bloat the install.
 
 [![PyPI](https://img.shields.io/pypi/v/pyfastcms.svg)](https://pypi.org/project/pyfastcms/)
 [![Python](https://img.shields.io/pypi/pyversions/pyfastcms.svg)](https://pypi.org/project/pyfastcms/)
@@ -164,23 +165,35 @@ the full filter operator list (`=`, `!=`, `>`, `>=`, `<`, `<=`, `~`,
 
 ---
 
-## Add AI (optional)
+## AI plugins (RAG, vectors, agents) + extensions
 
-AI features live in separate plugins so the core install stays
-lightweight. Install only what you need:
+FastCMS is **AI-native** but doesn't bundle AI into the core wheel.
+RAG, vector search, autonomous agents, and any other extension plug
+in via the `fastcms plugin install` CLI — your dependency tree stays
+small, and you only ship what you actually use. The roadmap goes
+deeper on agent orchestration and retrieval pipelines, all delivered
+as opt-in plugins.
 
 ```bash
+fastcms plugin list                 # see installed + available plugins
 fastcms plugin install ai-core      # LLM provider abstraction (OpenAI, Anthropic, Ollama)
 fastcms plugin install ai-vectors   # embedding storage + semantic search
 fastcms plugin install ai-rag       # retrieval-augmented Q&A on your docs
 fastcms plugin install ai-agents    # autonomous agents with tool calling
+fastcms plugin install example      # reference plugin showing routes, hooks, admin UI
 ```
 
-Then restart the server, configure a provider via the admin UI at
-`/admin/ai`, or POST to `/api/v1/plugins/ai/configure`. No API key
-required if you run [Ollama](https://ollama.ai) locally.
+The CLI fetches each plugin from the official
+[fastcms-plugins](https://github.com/aalhommada/fastcms-plugins)
+registry, resolves dependencies, and drops it into your project's
+`plugins/` directory. Restart `fastcms dev` after installing — plugins
+load once at server start.
 
-Plugins source: <https://github.com/aalhommada/fastcms-plugins>.
+For AI: configure a provider via the admin UI at `/admin/ai` or
+`POST /api/v1/plugins/ai/configure`. No API key required if you run
+[Ollama](https://ollama.ai) locally.
+
+Build your own plugin: see the [plugin development guide](https://fastcms.org/docs/plugins/plugin-development).
 
 ---
 
@@ -270,6 +283,11 @@ drop it in `plugins/`. See the
 still evolve before `1.0`. Several teams run it in production today; see
 [CHANGELOG.md](CHANGELOG.md) for what's stable and what's recently
 fixed.
+
+**Hit an error?** Check the
+[Troubleshooting guide](https://fastcms.org/docs/troubleshooting) — it
+covers the common install, boot, plugin, and deployment failures with
+the exact fix for each.
 
 ---
 
