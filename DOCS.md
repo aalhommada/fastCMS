@@ -25,18 +25,33 @@ FastCMS is a headless CMS built with FastAPI and SQLite. It provides dynamic col
 
 ### Installation
 
+FastCMS uses [uv](https://github.com/astral-sh/uv) — install it once:
+
 ```bash
-# Install dependencies
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-# Run database migrations
-alembic upgrade head
-
-# Start the server
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+curl -LsSf https://astral.sh/uv/install.sh | sh   # macOS / Linux
 ```
+
+Then either install from PyPI:
+
+```bash
+uv tool install pyfastcms
+fastcms init my-project && cd my-project
+fastcms migrate up
+fastcms dev
+```
+
+Or run from source:
+
+```bash
+git clone https://github.com/aalhommada/fastCMS && cd fastCMS
+uv sync --all-extras
+source .venv/bin/activate
+fastcms migrate up
+fastcms dev
+```
+
+See the [full installation guide](https://fastcms.org/docs/getting-started)
+for Docker, cloud-storage extras, and contributor setup.
 
 ### Access the Admin Dashboard
 

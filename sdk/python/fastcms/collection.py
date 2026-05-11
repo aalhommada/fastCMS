@@ -74,7 +74,7 @@ class CollectionClient(Generic[T]):
         """
         SSE subscription using a background thread. Returns an unsubscribe callable.
 
-        Note: requires ``httpx_sse`` package (``pip install httpx-sse``).
+        Note: requires ``httpx_sse`` package (``uv pip install httpx-sse`` or ``pip install httpx-sse``).
         """
         return self._client.realtime.subscribe(self._name, callback, filter=filter)
 

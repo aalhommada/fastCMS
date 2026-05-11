@@ -41,7 +41,7 @@ class RealtimeService:
             import httpx
             from httpx_sse import connect_sse  # type: ignore[import-untyped]
         except ImportError as exc:
-            raise ImportError("Realtime requires: pip install httpx httpx-sse") from exc
+            raise ImportError("Realtime requires: uv pip install httpx httpx-sse (or pip install)") from exc
 
         key = f"{collection_name}-{id(callback)}"
         stop_event = threading.Event()
@@ -113,7 +113,7 @@ class AsyncRealtimeService:
             import httpx
             from httpx_sse import aconnect_sse  # type: ignore[import-untyped]
         except ImportError as exc:
-            raise ImportError("Realtime requires: pip install httpx httpx-sse") from exc
+            raise ImportError("Realtime requires: uv pip install httpx httpx-sse (or pip install)") from exc
 
         params = {}
         if filter: params["filter"] = filter

@@ -91,7 +91,7 @@ All test dependencies are in `requirements.txt`:
 - pytest-cov
 - httpx
 
-Install with:
+Install the dev environment (test deps included) with:
 ```bash
-pip install -r requirements.txt
+uv sync --all-extras
 ```

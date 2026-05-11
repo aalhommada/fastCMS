@@ -2,7 +2,7 @@
 Azure Blob Storage implementation.
 
 Requires: azure-storage-blob, aiohttp
-Install with: pip install azure-storage-blob aiohttp
+Install via the azure extra: uv tool install 'pyfastcms[azure]'
 
 Configuration via environment variables:
 - AZURE_STORAGE_CONNECTION_STRING (recommended)
@@ -52,7 +52,7 @@ class AzureBlobStorage(BaseStorage):
         if not AZURE_AVAILABLE:
             raise ImportError(
                 "azure-storage-blob is required for Azure Blob Storage. "
-                "Install with: pip install azure-storage-blob aiohttp"
+                "Install via the azure extra: uv tool install 'pyfastcms[azure]'"
             )
 
         self.container_name = container_name

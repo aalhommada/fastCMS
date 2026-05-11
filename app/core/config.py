@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     # Local Storage (default)
     LOCAL_STORAGE_PATH: str = "./data/files"
 
-    # AWS S3 Storage (optional - requires: pip install boto3 aioboto3)
+    # AWS S3 Storage (optional - install via: uv tool install 'pyfastcms[s3]')
     AWS_S3_BUCKET_NAME: str = ""
     AWS_S3_REGION: str = "us-east-1"
     AWS_S3_ENDPOINT_URL: str = ""  # For S3-compatible services (MinIO, DigitalOcean Spaces)
@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
 
-    # Azure Blob Storage (optional - requires: pip install azure-storage-blob)
+    # Azure Blob Storage (optional - install via: uv tool install 'pyfastcms[azure]')
     AZURE_STORAGE_CONTAINER_NAME: str = ""
     AZURE_STORAGE_CONNECTION_STRING: str = ""  # Recommended method
     AZURE_STORAGE_ACCOUNT_NAME: str = ""  # Alternative method

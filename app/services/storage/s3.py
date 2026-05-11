@@ -2,7 +2,7 @@
 AWS S3 storage implementation.
 
 Requires: boto3, aioboto3
-Install with: pip install boto3 aioboto3
+Install via the s3 extra: uv tool install 'pyfastcms[s3]'
 
 Configuration via environment variables:
 - AWS_ACCESS_KEY_ID
@@ -54,7 +54,7 @@ class S3Storage(BaseStorage):
         if not BOTO3_AVAILABLE:
             raise ImportError(
                 "boto3 and aioboto3 are required for S3 storage. "
-                "Install with: pip install boto3 aioboto3"
+                "Install via the s3 extra: uv tool install 'pyfastcms[s3]'"
             )
 
         self.bucket_name = bucket_name

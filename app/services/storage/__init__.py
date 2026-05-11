@@ -52,7 +52,7 @@ def get_s3_storage_class():
     except ImportError as e:
         raise ImportError(
             "boto3 and aioboto3 are required for S3 storage. "
-            f"Install with: pip install boto3 aioboto3\n"
+            f"Install with: uv tool install 'pyfastcms[s3]' (or pip install boto3 aioboto3)\n"
             f"Original error: {str(e)}"
         )
 
@@ -66,7 +66,7 @@ def get_azure_storage_class():
     except ImportError as e:
         raise ImportError(
             "azure-storage-blob is required for Azure Blob Storage. "
-            f"Install with: pip install azure-storage-blob aiohttp\n"
+            f"Install with: uv tool install 'pyfastcms[azure]' (or pip install azure-storage-blob aiohttp)\n"
             f"Original error: {str(e)}"
         )
 

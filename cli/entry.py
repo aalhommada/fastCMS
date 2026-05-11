@@ -3,8 +3,8 @@
 FastCMS Command Line Interface — unified entry point.
 
 This module is the pip-installable CLI entry point. It works both
-when installed via `pip install fastcms` and when running from the
-source repository.
+when installed via `uv tool install pyfastcms` (or `pip install
+pyfastcms`) and when running from the source repository.
 
 IMPORTANT: Do NOT import from `app.*` at module level. Commands like
 `fastcms init` must work before any .env or database exists. All app
@@ -17,8 +17,9 @@ from pathlib import Path
 
 import click
 
-# When running from source (not pip-installed), add the repo root to sys.path
-# so that `from app.xxx import ...` works without pip install.
+# When running from source (not installed as a package), add the repo
+# root to sys.path so that `from app.xxx import ...` works without
+# `uv tool install` / `pip install`.
 _source_root = Path(__file__).parent.parent
 if (_source_root / "app" / "main.py").exists() and str(_source_root) not in sys.path:
     sys.path.insert(0, str(_source_root))

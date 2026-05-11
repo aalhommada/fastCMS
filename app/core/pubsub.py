@@ -145,7 +145,7 @@ class RedisPubSub(BasePubSub):
             logger.info("Redis Pub/Sub connected successfully")
 
         except ImportError:
-            logger.error("redis package not installed. Run: pip install redis")
+            logger.error("redis package not installed. Run: uv tool install 'pyfastcms[redis]'")
             raise
         except Exception as e:
             logger.error(f"Failed to connect to Redis: {e}")
