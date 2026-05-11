@@ -17,24 +17,40 @@ integrations.
 
 ## Install
 
-### From PyPI (recommended)
+FastCMS uses [**uv**](https://github.com/astral-sh/uv) — the fast modern
+Python toolchain from Astral — as its recommended installer. uv handles
+Python versions, virtualenvs, and packages with one command, and is
+~10× faster than `pip` on every operation.
+
+### Prerequisites
 
 ```bash
-pip install pyfastcms
+# Install uv (one-time, takes ~5s)
+curl -LsSf https://astral.sh/uv/install.sh | sh         # macOS / Linux
+# Windows (PowerShell):
+#   powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+### Recommended — `uv tool install` (treats `fastcms` like a global CLI)
+
+```bash
+uv tool install pyfastcms
 fastcms init my-app
 cd my-app
 fastcms dev
 ```
 
-You now have an admin at <http://localhost:8000/admin> and an OpenAPI
-playground at <http://localhost:8000/docs>.
+No venv to manage — uv isolates the install. Admin at
+<http://localhost:8000/admin>, OpenAPI playground at
+<http://localhost:8000/docs>.
 
-### With cloud storage backends
+### Project-local — `uv add` inside your own app
 
 ```bash
-pip install 'pyfastcms[s3]'        # AWS S3 / MinIO / DigitalOcean Spaces
-pip install 'pyfastcms[azure]'     # Azure Blob
-pip install 'pyfastcms[storage]'   # both at once
+uv init my-app
+cd my-app
+uv add pyfastcms
+uv run fastcms dev
 ```
 
 ### Docker (multi-service: FastCMS + Postgres + Redis)
@@ -45,19 +61,32 @@ cp .env.example .env       # set SECRET_KEY (openssl rand -hex 32) inside
 docker compose up -d
 ```
 
-The compose file in this repo wires up Postgres + Redis for production-grade
-real-time and persistence. For SQLite-only dev, the `pip install` path
-above is simpler.
+Production-grade stack with Postgres + Redis. See the full
+[deployment guide](https://fastcms.org/docs/deployment/docker).
+
+### With cloud storage backends
+
+```bash
+uv tool install 'pyfastcms[s3]'        # AWS S3 / MinIO / DigitalOcean Spaces
+uv tool install 'pyfastcms[azure]'     # Azure Blob
+uv tool install 'pyfastcms[storage]'   # both at once
+```
 
 ### From source (for contributors)
 
 ```bash
 git clone https://github.com/aalhommada/fastCMS && cd fastCMS
-python -m venv .venv && source .venv/bin/activate
-pip install -e '.[storage]'
+uv sync --all-extras       # creates .venv, installs everything incl. dev tools
+source .venv/bin/activate
 cp .env.example .env       # set SECRET_KEY
 fastcms dev
 ```
+
+### Already prefer pip?
+
+uv is recommended but not required. `pip` works too — just make sure you're
+in a virtualenv (`python -m venv .venv && source .venv/bin/activate`)
+before running `pip install pyfastcms`.
 
 ---
 

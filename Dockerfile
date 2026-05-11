@@ -1,30 +1,41 @@
+# syntax=docker/dockerfile:1.7
 # ── Stage 1: Builder ──────────────────────────────────────────────
+# Use uv for dependency installation — ~10x faster than pip, deterministic.
 FROM python:3.13-slim AS builder
+
+# Install uv via its official slim image (just copies the binary)
+COPY --from=ghcr.io/astral-sh/uv:0.5.9 /uv /uvx /usr/local/bin/
 
 WORKDIR /build
 
-# Install build dependencies
+# Build-time deps for any wheels that don't ship pre-built
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only dependency spec first (layer caching)
+# Dependency spec first, so layer cache survives source edits
 COPY pyproject.toml ./
 
-# Install dependencies into a virtual env
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Install core deps + PostgreSQL driver
-RUN pip install --no-cache-dir . asyncpg psycopg2-binary
+# Resolve + install into an isolated virtualenv. Postgres drivers are added
+# explicitly because they aren't in pyproject's default deps (they're for
+# the prod compose stack, not the SQLite dev path).
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1
+RUN uv venv /opt/venv --python 3.13
+RUN uv pip install --python /opt/venv/bin/python \
+    --no-cache \
+    . asyncpg psycopg2-binary
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────
 FROM python:3.13-slim
 
 LABEL maintainer="FastCMS Team <team@fastcms.dev>"
-LABEL description="FastCMS — Open-source Backend-as-a-Service"
+LABEL description="FastCMS — Open-source Backend-as-a-Service (uv-built)"
+LABEL org.opencontainers.image.source="https://github.com/aalhommada/fastCMS"
+LABEL org.opencontainers.image.licenses="MIT"
 
-# Runtime deps only (Pillow needs libjpeg/libpng, psycopg needs libpq)
+# Runtime-only system libs: pillow needs libjpeg/libpng/libwebp; psycopg needs libpq
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg62-turbo \
     libpng16-16 \
@@ -33,30 +44,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy virtual env from builder
+# Drop the pre-built venv in
 COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /app
 
-# Copy application code
+# Application source
 COPY app/ ./app/
 COPY cli/ ./cli/
 COPY migrations/ ./migrations/
-COPY alembic.ini ./
-COPY pyproject.toml ./
+COPY alembic.ini pyproject.toml ./
 
-# Create directories for runtime data
+# Runtime data dirs — these are typically volume-mounted in production
 RUN mkdir -p data/files data/files/thumbs hooks plugins
 
-# Default port
 EXPOSE 8000
 
-# Health check — hits the admin login page
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/admin/login || exit 1
+    CMD curl -fsS http://localhost:8000/health || exit 1
 
-# Run with uvicorn
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

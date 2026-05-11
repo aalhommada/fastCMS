@@ -179,10 +179,28 @@ FastCMS project created with the FastCMS CLI.
   hooks/            # Custom hooks (drop-in)
 ```
 
+## Installing additional dependencies
+
+This project uses uv for fast, reproducible Python package management. To
+add an extra:
+
+```bash
+uv add pyfastcms[storage]   # AWS S3 / Azure Blob support
+uv add pyfastcms[redis]     # multi-server real-time
+```
+
+To install AI plugins:
+
+```bash
+fastcms plugin install ai-core
+fastcms plugin install ai-vectors
+fastcms plugin install ai-rag
+```
+
 ## Documentation
 
-- Full Documentation: https://docs.fastcms.dev
-- GitHub: https://github.com/fastcms/fastcms
+- Full Documentation: https://fastcms.org/docs
+- GitHub: https://github.com/aalhommada/fastCMS
 """
         with open(f"{project_name}/README.md", "w", encoding="utf-8") as f:
             f.write(readme_content)

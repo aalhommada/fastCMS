@@ -48,8 +48,9 @@ async def admin_dashboard(
 ):
     """Admin dashboard home page."""
     return templates.TemplateResponse(
+        request,
         "dashboard.html",
-        {"request": request, "user": user, "active": "dashboard"},
+        {"user": user, "active": "dashboard"},
     )
 
 
@@ -60,8 +61,9 @@ async def api_documentation(
 ):
     """Comprehensive API documentation page."""
     return templates.TemplateResponse(
+        request,
         "api_docs.html",
-        {"request": request, "user": user, "active": "api"},
+        {"user": user, "active": "api"},
     )
 
 
@@ -72,8 +74,9 @@ async def auth_docs(
 ):
     """Authentication documentation page."""
     return templates.TemplateResponse(
+        request,
         "auth_docs.html",
-        {"request": request, "user": user, "active": "auth-docs"},
+        {"user": user, "active": "auth-docs"},
     )
 
 
@@ -84,8 +87,9 @@ async def admin_users(
 ):
     """User management page."""
     return templates.TemplateResponse(
+        request,
         "users.html",
-        {"request": request, "user": user, "active": "users"},
+        {"user": user, "active": "users"},
     )
 
 
@@ -96,8 +100,9 @@ async def users_api_reference(
 ):
     """View users & authentication API reference."""
     return templates.TemplateResponse(
+        request,
         "users_api.html",
-        {"request": request, "user": user, "active": "users"},
+        {"user": user, "active": "users"},
     )
 
 
@@ -108,8 +113,9 @@ async def admin_collections(
 ):
     """Collection management page."""
     return templates.TemplateResponse(
+        request,
         "collections.html",
-        {"request": request, "user": user, "active": "collections"},
+        {"user": user, "active": "collections"},
     )
 
 
@@ -120,8 +126,9 @@ async def create_collection_form(
 ):
     """Create new collection form."""
     return templates.TemplateResponse(
+        request,
         "collection_form.html",
-        {"request": request, "user": user, "active": "collections", "collection": None},
+        {"user": user, "active": "collections", "collection": None},
     )
 
 
@@ -133,8 +140,9 @@ async def edit_collection_form(
 ):
     """Edit collection form."""
     return templates.TemplateResponse(
+        request,
         "collection_form.html",
-        {"request": request, "user": user, "active": "collections", "collection_id": collection_id},
+        {"user": user, "active": "collections", "collection_id": collection_id},
     )
 
 
@@ -146,8 +154,9 @@ async def collection_api_reference(
 ):
     """View collection API reference with code examples."""
     return templates.TemplateResponse(
+        request,
         "collection_detail.html",
-        {"request": request, "user": user, "active": "collections", "collection_name": collection_name},
+        {"user": user, "active": "collections", "collection_name": collection_name},
     )
 
 
@@ -159,8 +168,9 @@ async def collection_records(
 ):
     """View records in a collection."""
     return templates.TemplateResponse(
+        request,
         "records.html",
-        {"request": request, "user": user, "active": "collections", "collection_name": collection_name},
+        {"user": user, "active": "collections", "collection_name": collection_name},
     )
 
 
@@ -172,8 +182,9 @@ async def create_record_form(
 ):
     """Create new record form."""
     return templates.TemplateResponse(
+        request,
         "record_form.html",
-        {"request": request, "user": user, "active": "collections", "collection_name": collection_name, "record": None},
+        {"user": user, "active": "collections", "collection_name": collection_name, "record": None},
     )
 
 
@@ -186,8 +197,9 @@ async def view_record(
 ):
     """View record details."""
     return templates.TemplateResponse(
+        request,
         "record_detail.html",
-        {"request": request, "user": user, "active": "collections", "collection_name": collection_name, "record_id": record_id},
+        {"user": user, "active": "collections", "collection_name": collection_name, "record_id": record_id},
     )
 
 
@@ -200,8 +212,9 @@ async def edit_record_form(
 ):
     """Edit record form."""
     return templates.TemplateResponse(
+        request,
         "record_form.html",
-        {"request": request, "user": user, "active": "collections", "collection_name": collection_name, "record_id": record_id},
+        {"user": user, "active": "collections", "collection_name": collection_name, "record_id": record_id},
     )
 
 
@@ -212,8 +225,9 @@ async def file_manager(
 ):
     """File management page."""
     return templates.TemplateResponse(
+        request,
         "files.html",
-        {"request": request, "user": user, "active": "files"},
+        {"user": user, "active": "files"},
     )
 
 
@@ -224,8 +238,9 @@ async def admin_webhooks(
 ):
     """Webhook management page."""
     return templates.TemplateResponse(
+        request,
         "webhooks.html",
-        {"request": request, "user": user, "active": "webhooks"},
+        {"user": user, "active": "webhooks"},
     )
 
 
@@ -237,8 +252,9 @@ async def admin_plugins(
     """Plugins management page — lists all loaded plugin packages."""
     from app.core.plugin_registry import get_registry
     return templates.TemplateResponse(
+        request,
         "plugins.html",
-        {"request": request, "user": user, "active": "plugins",
+        {"user": user, "active": "plugins",
          "plugins": get_registry().get_plugins()},
     )
 
@@ -251,8 +267,9 @@ async def admin_hooks(
     """Hooks management page — lists all loaded Python hook files."""
     from app.core.hook_loader import get_loaded_hooks
     return templates.TemplateResponse(
+        request,
         "hooks.html",
-        {"request": request, "user": user, "active": "hooks", "hooks": get_loaded_hooks()},
+        {"user": user, "active": "hooks", "hooks": get_loaded_hooks()},
     )
 
 
@@ -263,8 +280,9 @@ async def admin_backups(
 ):
     """Backup management page."""
     return templates.TemplateResponse(
+        request,
         "backups.html",
-        {"request": request, "user": user, "active": "backups"},
+        {"user": user, "active": "backups"},
     )
 
 
@@ -275,8 +293,9 @@ async def admin_settings(
 ):
     """System settings page."""
     return templates.TemplateResponse(
+        request,
         "settings.html",
-        {"request": request, "user": user, "active": "settings"},
+        {"user": user, "active": "settings"},
     )
 
 
@@ -287,8 +306,9 @@ async def admin_sessions(
 ):
     """Session management page — list and revoke active sessions."""
     return templates.TemplateResponse(
+        request,
         "sessions.html",
-        {"request": request, "user": user, "active": "sessions"},
+        {"user": user, "active": "sessions"},
     )
 
 
@@ -300,13 +320,11 @@ async def admin_ip_rules(
     """IP allowlist/blocklist management page."""
     from app.core.config import settings as app_settings
     return templates.TemplateResponse(
+        request,
         "ip_rules.html",
-        {
-            "request": request,
-            "user": user,
+        {"user": user,
             "active": "ip_rules",
-            "ip_filter_enabled": app_settings.IP_FILTER_ENABLED,
-        },
+            "ip_filter_enabled": app_settings.IP_FILTER_ENABLED,},
     )
 
 
@@ -317,8 +335,9 @@ async def admin_metrics(
 ):
     """Metrics dashboard page."""
     return templates.TemplateResponse(
+        request,
         "metrics.html",
-        {"request": request, "user": user, "active": "metrics"},
+        {"user": user, "active": "metrics"},
     )
 
 
@@ -330,10 +349,9 @@ async def admin_email_settings(
     """Email settings and SMTP configuration page."""
     from app.core.config import settings as app_settings
     return templates.TemplateResponse(
+        request,
         "email_settings.html",
-        {
-            "request": request,
-            "user": user,
+        {"user": user,
             "active": "email_settings",
             "smtp_enabled": app_settings.SMTP_ENABLED,
             "smtp_host": app_settings.SMTP_HOST,
@@ -342,8 +360,7 @@ async def admin_email_settings(
             "smtp_from_email": app_settings.SMTP_FROM_EMAIL,
             "smtp_from_name": app_settings.SMTP_FROM_NAME,
             "security_notifications_enabled": app_settings.SECURITY_NOTIFICATIONS_ENABLED,
-            "security_login_notifications": app_settings.SECURITY_LOGIN_NOTIFICATIONS,
-        },
+            "security_login_notifications": app_settings.SECURITY_LOGIN_NOTIFICATIONS,},
     )
 
 
@@ -354,8 +371,9 @@ async def admin_profile(
 ):
     """User profile page."""
     return templates.TemplateResponse(
+        request,
         "profile.html",
-        {"request": request, "user": user, "active": "profile"},
+        {"user": user, "active": "profile"},
     )
 
 
@@ -366,8 +384,9 @@ async def admin_realtime(
 ):
     """Real-time features demo page."""
     return templates.TemplateResponse(
+        request,
         "realtime.html",
-        {"request": request, "user": user, "active": "realtime"},
+        {"user": user, "active": "realtime"},
     )
 
 
@@ -378,8 +397,9 @@ async def admin_cron(
 ):
     """Cron job management page."""
     return templates.TemplateResponse(
+        request,
         "cron.html",
-        {"request": request, "user": user, "active": "cron"},
+        {"user": user, "active": "cron"},
     )
 
 
@@ -391,7 +411,7 @@ async def admin_login(request: Request, db: AsyncSession = Depends(get_db)):
     if not result.scalar_one_or_none():
         return RedirectResponse(url="/setup", status_code=302)
 
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request, "login.html")
 
 
 @router.get("/ai", response_class=HTMLResponse)
@@ -405,8 +425,9 @@ async def admin_ai_playground(
     if "ai-core" not in ids:
         raise HTTPException(status_code=404, detail="AI Core plugin not installed")
     return templates.TemplateResponse(
+        request,
         "ai_playground.html",
-        {"request": request, "user": user, "active": "ai"},
+        {"user": user, "active": "ai"},
     )
 
 
@@ -418,4 +439,4 @@ async def admin_setup(request: Request, db: AsyncSession = Depends(get_db)):
     if result.scalar_one_or_none():
         return RedirectResponse(url="/admin/login", status_code=302)
 
-    return templates.TemplateResponse("setup.html", {"request": request})
+    return templates.TemplateResponse(request, "setup.html")

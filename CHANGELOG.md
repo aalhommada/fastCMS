@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-05-11
+
+Critical fix for users installing on Python 3.13+ / Starlette 1.0+.
+
+### Fixed
+
+- **`/admin/*` routes 500'd on fresh installs** with the error
+  `TypeError: cannot use 'tuple' as a dict key (unhashable type: 'dict')`
+  on any Starlette ≥ ~0.40 / Python 3.14. All 29 calls in
+  `app/admin/routes.py` were using the deprecated
+  `TemplateResponse(name, {"request": request, ...})` signature. On
+  newer Starlette, the first positional arg is now the `Request`
+  instance — the old form was being misinterpreted (`name="login.html"`
+  treated as the request, the context dict treated as the template
+  name) and Jinja2 crashed trying to use a dict as a cache key.
+- Migrated all admin templates to the modern API:
+  `TemplateResponse(request, name, context)`. Backward-compatible with
+  Starlette ≥ 0.31 (both APIs supported there).
+
+### Migration notes
+
+If you only used `0.1.3` or `0.1.4`: just upgrade to `0.1.5`. No
+configuration or schema changes needed.
+
+If you had a `pip install pyfastcms` from a fresh environment that 500'd
+on `/admin`, this is the fix.
+
+## [0.1.4] — 2026-05-11
+
+Tooling + documentation patch: standardise on `uv` as the Python toolchain
+and add a complete Docker deployment guide. No runtime behaviour changes.
+
+### Added
+
+- `.python-version` pinning the toolchain to Python 3.13 so `uv` and
+  `pyenv` both auto-pick the right interpreter.
+- `[tool.uv]` block in `pyproject.toml` declaring the dev environment.
+  `uv sync --all-extras` now creates a complete development setup in
+  one command.
+- Deployment guide at <https://fastcms.org/docs/deployment/docker>
+  (Docker + Postgres + Redis quickstart, env config, persistence,
+  reverse proxy, scaling notes, backups).
+
+### Changed
+
+- **Dockerfile rewritten to use `uv`** for dependency installation.
+  Multi-stage build now resolves and installs with `uv pip install`
+  instead of `pip install`. Cold builds are ~3× faster (≈30 s vs ≈90 s)
+  and warm builds ≈3 s. Same final image, deterministic.
+- **README install section rewritten** with `uv` as the recommended
+  path: `uv tool install pyfastcms` (treats `fastcms` like a system
+  CLI tool) is now the first install option. `pip` is preserved as a
+  documented fallback.
+- `fastcms init` project scaffold updated to reference `uv add` for
+  extra dependencies and point at `fastcms.org` for docs.
+- Docs site (`fastcms.org`) install snippets across getting-started,
+  CLI reference, plugin pages, and landing-page hero migrated to
+  `uv pip install` / `uv tool install`.
+
+### Migration notes
+
+- Existing `pip install pyfastcms` users: nothing breaks — pip still
+  works. Switching to `uv tool install pyfastcms` is recommended but
+  optional.
+- Existing Docker users: rebuild (`docker compose build`) once to pick
+  up the faster image. No compose-file changes required.
+
 ## [0.1.3] — 2026-05-08
 
 Documentation-only patch fixing docs URLs in the package README.
