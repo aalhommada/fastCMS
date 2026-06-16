@@ -430,6 +430,14 @@ class CollectionService:
         if not view_name.replace("_", "").isalnum():
             raise BadRequestException("Invalid view name")
 
+        # Restrict the view body to a single read-only SELECT (defense in depth on
+        # top of the admin-only gate at the API layer).
+        normalized = query.strip().rstrip(";").strip()
+        if not (normalized.lower().startswith("select") or normalized.lower().startswith("with")):
+            raise BadRequestException("view_query must be a SELECT statement")
+        if ";" in normalized:
+            raise BadRequestException("view_query must be a single statement")
+
         # Create view SQL
         create_view_sql = f"CREATE VIEW {view_name} AS {query}"
 

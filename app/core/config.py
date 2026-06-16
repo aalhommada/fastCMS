@@ -3,9 +3,10 @@ Application configuration using Pydantic Settings.
 All settings are loaded from environment variables or .env file.
 """
 
-from typing import List, Literal, Optional
+import json
+from typing import Annotated, List, Literal, Optional
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -20,7 +21,7 @@ class Settings(BaseSettings):
 
     # Application
     APP_NAME: str = "FastCMS"
-    APP_VERSION: str = "0.1.5"
+    APP_VERSION: str = "0.1.6"
     APP_HOST: str = "0.0.0.0"
     APP_PORT: int = 8000
     BASE_URL: str = "http://localhost:8000"
@@ -38,15 +39,24 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # 30 days
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    # NoDecode stops pydantic-settings from trying to JSON-decode this list before
+    # the validator runs — otherwise a plain comma-separated value (as shipped in
+    # .env.example) raises a SettingsError at startup.
+    CORS_ORIGINS: Annotated[List[str], NoDecode] = [
+        "http://localhost:3000",
+        "http://localhost:8000",
+    ]
     CORS_ALLOW_CREDENTIALS: bool = True
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
-    def parse_cors_origins(cls, v: str | List[str]) -> List[str]:
-        """Parse CORS origins from string or list."""
+    def parse_cors_origins(cls, v: "str | List[str]") -> List[str]:
+        """Accept a comma-separated string, a JSON-array string, or a list."""
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
+            s = v.strip()
+            if s.startswith("["):
+                return json.loads(s)
+            return [origin.strip() for origin in s.split(",") if origin.strip()]
         return v
 
     # Admin

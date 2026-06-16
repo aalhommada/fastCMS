@@ -108,8 +108,9 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
   }'
 ```
 
-The response includes an `access_token`. Save it as `TOKEN` for the next
-calls. To make the user an admin:
+The response nests the tokens under a `token` object — grab
+`token.access_token` and save it as `TOKEN` for the next calls
+(e.g. `TOKEN=$(… | jq -r .token.access_token)`). To make the user an admin:
 
 ```bash
 sqlite3 data/app.db "UPDATE users SET role='admin' WHERE email='you@example.com';"

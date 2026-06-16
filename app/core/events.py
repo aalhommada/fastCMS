@@ -6,8 +6,8 @@ Events are published to the Pub/Sub system and also trigger webhooks.
 """
 
 import asyncio
+from app.utils.timeutils import utcnow
 from collections import defaultdict
-from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Coroutine, Dict, List, Optional
 
@@ -60,7 +60,7 @@ class Event:
         self.collection_name = collection_name
         self.record_id = record_id
         self.data = data
-        self.timestamp = datetime.utcnow().isoformat()
+        self.timestamp = utcnow().isoformat()
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the event to a dictionary."""

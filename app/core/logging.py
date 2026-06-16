@@ -3,8 +3,8 @@ Structured logging configuration with JSON support.
 """
 
 import logging
+from app.utils.timeutils import utcnow
 import sys
-from datetime import datetime
 from typing import Any, Dict
 
 import orjson
@@ -18,7 +18,7 @@ class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON."""
         log_data: Dict[str, Any] = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": utcnow().isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

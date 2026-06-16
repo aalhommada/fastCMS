@@ -10,7 +10,7 @@ This module provides a scalable real-time messaging system with:
 """
 
 import uuid
-from datetime import datetime
+from app.utils.timeutils import utcnow
 from typing import Any, Dict, Optional
 
 import orjson
@@ -240,7 +240,7 @@ async def _broadcast_presence(user_id: str, action: str) -> None:
         data={
             "user_id": user_id,
             "action": action,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utcnow().isoformat(),
         }
     )
 

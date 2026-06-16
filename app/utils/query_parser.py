@@ -54,6 +54,7 @@ Field Modifiers:
 """
 
 import re
+from app.utils.timeutils import utcnow
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Union
 
@@ -201,16 +202,16 @@ class QueryParser:
 
     # DateTime macro patterns
     DATETIME_MACROS = {
-        "@now": lambda: datetime.utcnow(),
-        "@today": lambda: datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0),
-        "@yesterday": lambda: datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1),
-        "@tomorrow": lambda: datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1),
-        "@todayStart": lambda: datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0),
-        "@todayEnd": lambda: datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999999),
-        "@monthStart": lambda: datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0),
-        "@monthEnd": lambda: (datetime.utcnow().replace(day=1, hour=23, minute=59, second=59, microsecond=999999) + relativedelta(months=1) - timedelta(days=1)),
-        "@yearStart": lambda: datetime.utcnow().replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0),
-        "@yearEnd": lambda: datetime.utcnow().replace(month=12, day=31, hour=23, minute=59, second=59, microsecond=999999),
+        "@now": lambda: utcnow(),
+        "@today": lambda: utcnow().replace(hour=0, minute=0, second=0, microsecond=0),
+        "@yesterday": lambda: utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1),
+        "@tomorrow": lambda: utcnow().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1),
+        "@todayStart": lambda: utcnow().replace(hour=0, minute=0, second=0, microsecond=0),
+        "@todayEnd": lambda: utcnow().replace(hour=23, minute=59, second=59, microsecond=999999),
+        "@monthStart": lambda: utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0),
+        "@monthEnd": lambda: (utcnow().replace(day=1, hour=23, minute=59, second=59, microsecond=999999) + relativedelta(months=1) - timedelta(days=1)),
+        "@yearStart": lambda: utcnow().replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0),
+        "@yearEnd": lambda: utcnow().replace(month=12, day=31, hour=23, minute=59, second=59, microsecond=999999),
     }
 
     # Relative offset patterns (e.g., @day+7, @hour-2)
@@ -546,7 +547,7 @@ class QueryParser:
 
             if unit in cls.RELATIVE_OFFSET_UNITS:
                 offset = cls.RELATIVE_OFFSET_UNITS[unit](amount)
-                now = datetime.utcnow()
+                now = utcnow()
                 # Handle both timedelta and relativedelta
                 return now + offset
 

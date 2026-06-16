@@ -2,6 +2,11 @@
 Development server command
 """
 import asyncio
+import threading
+import time
+import urllib.request
+import webbrowser
+
 import click
 import uvicorn
 from rich.console import Console
@@ -9,6 +14,25 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 
 console = Console()
+
+
+def _open_browser_when_ready(url: str, health_url: str, timeout: float = 15.0) -> None:
+    """Poll the health endpoint, then open the browser. Runs in a thread.
+
+    Why not just sleep(1) and open: cold-boot can take longer than that on
+    the first start (DB init + plugin discovery). Polling /health is more
+    reliable.
+    """
+    start = time.monotonic()
+    while time.monotonic() - start < timeout:
+        try:
+            with urllib.request.urlopen(health_url, timeout=0.5) as resp:
+                if 200 <= resp.status < 300:
+                    webbrowser.open(url)
+                    return
+        except Exception:
+            pass
+        time.sleep(0.3)
 
 
 async def check_first_run():
@@ -74,7 +98,9 @@ def prompt_create_admin():
 @click.option("--port", default=8000, help="Port to bind to")
 @click.option("--reload/--no-reload", default=True, help="Enable auto-reload")
 @click.option("--skip-check", is_flag=True, help="Skip first-run admin check")
-def dev(host: str, port: int, reload: bool, skip_check: bool):
+@click.option("--open/--no-open", "open_browser", default=True,
+              help="Open the admin in a browser when the server is ready (default: on)")
+def dev(host: str, port: int, reload: bool, skip_check: bool, open_browser: bool):
     """
     Start the FastCMS development server
 
@@ -103,6 +129,21 @@ def dev(host: str, port: int, reload: bool, skip_check: bool):
 
     console.print("[dim]Press CTRL+C to stop the server[/dim]\n")
     console.print("─" * 60 + "\n")
+
+    # When the server is ready, optionally open the admin in a browser.
+    # Runs in a background thread so it doesn't block uvicorn's startup.
+    # Uses 127.0.0.1 in the visit URL even when binding to 0.0.0.0, since
+    # the browser is on the same machine.
+    if open_browser:
+        visit_host = "127.0.0.1" if host in ("0.0.0.0", "::", "") else host
+        threading.Thread(
+            target=_open_browser_when_ready,
+            args=(
+                f"http://{visit_host}:{port}/admin",
+                f"http://{visit_host}:{port}/health",
+            ),
+            daemon=True,
+        ).start()
 
     try:
         uvicorn.run(

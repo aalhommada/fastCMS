@@ -4,6 +4,7 @@ Requires admin role for all operations.
 """
 
 from typing import Any, Literal, cast
+from app.utils.timeutils import utcnow
 
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import func, select
@@ -34,7 +35,7 @@ async def get_stats(
     """
     from app.db.models.backup import Backup
     from app.db.models.file import File
-    from datetime import datetime, timedelta
+    from datetime import timedelta
 
     user_repo = UserRepository(db)
     collection_repo = CollectionRepository(db)
@@ -50,7 +51,7 @@ async def get_stats(
     admin_users = result.scalar_one()
 
     # Get recent users (last 7 days)
-    seven_days_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
+    seven_days_ago = (utcnow() - timedelta(days=7)).isoformat()
     result = await db.execute(
         select(func.count(User.id)).where(User.created >= seven_days_ago)
     )

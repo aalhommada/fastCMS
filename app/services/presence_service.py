@@ -1,7 +1,8 @@
 """Presence tracking service for realtime features."""
 import asyncio
+from app.utils.timeutils import utcnow
 from typing import Dict, Set, Optional, Any
-from datetime import datetime, timedelta
+from datetime import timedelta
 from collections import defaultdict
 
 from app.core.logging import get_logger
@@ -26,7 +27,7 @@ class PresenceInfo:
         self.user_id = user_id
         self.collection = collection
         self.status = status
-        self.last_seen = datetime.utcnow()
+        self.last_seen = utcnow()
         self.metadata: Dict[str, Any] = {}
     
     def to_dict(self) -> Dict[str, Any]:
@@ -42,7 +43,7 @@ class PresenceInfo:
     def update_status(self, status: str, metadata: Optional[Dict[str, Any]] = None):
         """Update presence status."""
         self.status = status
-        self.last_seen = datetime.utcnow()
+        self.last_seen = utcnow()
         if metadata:
             self.metadata.update(metadata)
 
@@ -134,7 +135,7 @@ class PresenceService:
     
     async def cleanup_stale(self, max_idle_minutes: int = 30):
         """Remove stale presence entries."""
-        now = datetime.utcnow()
+        now = utcnow()
         cutoff = now - timedelta(minutes=max_idle_minutes)
         
         to_remove = []
@@ -160,7 +161,7 @@ class PresenceService:
                     "event": event_type,
                     **presence.to_dict()
                 },
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": utcnow().isoformat()
             }
             
             await connection_manager.broadcast_to_collection(

@@ -4,7 +4,8 @@ View collections are virtual collections that compute data from other collection
 """
 
 from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime, timedelta
+from app.utils.timeutils import utcnow
+from datetime import datetime
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -304,7 +305,7 @@ class ViewCache:
         results, total, timestamp = self._cache[cache_key]
 
         # Check if expired
-        if ttl > 0 and (datetime.utcnow() - timestamp).total_seconds() > ttl:
+        if ttl > 0 and (utcnow() - timestamp).total_seconds() > ttl:
             del self._cache[cache_key]
             return None
 
@@ -324,7 +325,7 @@ class ViewCache:
             results: Query results
             total: Total count
         """
-        self._cache[cache_key] = (results, total, datetime.utcnow())
+        self._cache[cache_key] = (results, total, utcnow())
 
     def invalidate(self, cache_key: str) -> None:
         """

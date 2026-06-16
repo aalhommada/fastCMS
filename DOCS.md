@@ -218,15 +218,20 @@ curl -X POST http://localhost:8000/api/v1/collections/customers/auth/login \
 
 ```json
 {
-  "access_token": "eyJhbGc...",
-  "refresh_token": "eyJhbGc...",
-  "token_type": "bearer",
   "user": {
     "id": "uuid",
     "email": "customer@example.com",
     "verified": false,
     "role": "user"
-  }
+  },
+  "token": {
+    "access_token": "eyJhbGc...",
+    "refresh_token": "eyJhbGc...",
+    "token_type": "bearer",
+    "expires_in": 86400
+  },
+  "message": null,
+  "requires_2fa": false
 }
 ```
 
@@ -1754,462 +1759,83 @@ When your webhook endpoint fails or returns a non-2xx status code, FastCMS will 
 
 ## Real-time Features
 
-FastCMS provides comprehensive real-time capabilities using Server-Sent Events (SSE), including Live Queries, Presence Tracking, and Real-time Collection Updates.
+FastCMS provides real-time updates over a **WebSocket** connection. Subscribe to
+one or more collections and receive an event whenever a record is created,
+updated, or deleted. (There is no SSE / `EventSource` endpoint — real-time is
+WebSocket-only.)
 
-### Overview
+### Endpoint
 
-Real-time features enable your applications to:
-- **Live Queries**: Subscribe to filtered data changes with query-based subscriptions
-- **Presence Tracking**: Track which users are currently active in your application
-- **Real-time Collections**: Automatically sync collection changes across all connected clients
-
-### Quick Start
-
-**Basic Connection (JavaScript):**
-```javascript
-// Connect to real-time updates
-const eventSource = new EventSource('/api/v1/realtime');
-
-// Listen to record events
-eventSource.addEventListener('record.created', (e) => {
-  const data = JSON.parse(e.data);
-  console.log('New record:', data);
-});
-
-eventSource.addEventListener('record.updated', (e) => {
-  const data = JSON.parse(e.data);
-  console.log('Record updated:', data);
-});
-
-eventSource.addEventListener('record.deleted', (e) => {
-  const data = JSON.parse(e.data);
-  console.log('Record deleted:', data);
-});
+```
+ws://localhost:8000/api/v1/ws/realtime
+ws://localhost:8000/api/v1/ws/realtime?token=YOUR_JWT_TOKEN
 ```
 
-### Live Queries
+Authenticate by passing a JWT in the `token` query parameter on connect, or by
+sending an `auth` message after the connection opens.
 
-Subscribe to data changes with query filters to receive only relevant updates.
+### Client → server messages (JSON)
 
-**Supported Operators:**
-- `field=value` - Equality
-- `field!=value` - Not equal
-- `field>value` - Greater than
-- `field<value` - Less than
-- `field>=value` - Greater than or equal
-- `field<=value` - Less than or equal
+| Action | Example |
+|--------|---------|
+| Subscribe to a collection | `{"action": "subscribe", "collection": "posts"}` |
+| Subscribe with a filter | `{"action": "subscribe", "collection": "posts", "filter": {"published": true}}` |
+| Subscribe to all collections | `{"action": "subscribe", "collection": "*"}` |
+| Unsubscribe | `{"action": "unsubscribe", "collection": "posts"}` |
+| Authenticate | `{"action": "auth", "token": "YOUR_JWT"}` |
+| Heartbeat reply | `{"action": "pong"}` |
 
-**Examples:**
+### Server → client messages (JSON)
+
+| Type | Description |
+|------|-------------|
+| `connected` | Connection established |
+| `authenticated` | Authentication succeeded |
+| `subscribed` | Subscription confirmed |
+| `unsubscribed` | Unsubscription confirmed |
+| `event` | A record was created / updated / deleted in a subscribed collection |
+| `ping` | Server heartbeat — reply with `{"action": "pong"}` |
+| `error` | Error message |
+| `presence` | A user joined or left |
+
+### Browser example
 
 ```javascript
-// Subscribe to published posts only
-const eventSource = new EventSource('/api/v1/realtime?query=status=published');
-
-// Subscribe to products over $100
-const eventSource = new EventSource('/api/v1/realtime/products?query=price>100');
-
-// Subscribe to active users
-const eventSource = new EventSource('/api/v1/realtime/users?query=active=true');
-```
-
-**Collection-Specific Subscription:**
-```javascript
-// Subscribe to a specific collection
-const eventSource = new EventSource('/api/v1/realtime/posts');
-
-// With query filter
-const eventSource = new EventSource('/api/v1/realtime/posts?query=author=john');
-```
-
-### Presence Tracking
-
-Track active users in your application in real-time.
-
-**Enable Presence Tracking:**
-```javascript
-// Connect with user ID for presence tracking
-const userId = 'user-123';
-const eventSource = new EventSource(`/api/v1/realtime?user_id=${userId}`);
-
-// Listen to presence events
-eventSource.addEventListener('user.joined', (e) => {
-  const data = JSON.parse(e.data);
-  console.log('User joined:', data.data);
-  // { user_id, user_name, connections, last_seen }
-});
-
-eventSource.addEventListener('user.left', (e) => {
-  const data = JSON.parse(e.data);
-  console.log('User left:', data.data);
-});
-```
-
-**Get Active Users:**
-```bash
-# Get all active users
-curl http://localhost:8000/api/v1/presence
-
-# Response
-{
-  "users": [
-    {
-      "user_id": "user-123",
-      "user_name": "John Doe",
-      "connections": 2,
-      "last_seen": "2025-01-15T10:30:00"
-    }
-  ],
-  "count": 1
-}
-```
-
-**Check Specific User:**
-```bash
-curl http://localhost:8000/api/v1/presence/user-123
-
-# Response
-{
-  "user_id": "user-123",
-  "presence": {
-    "user_id": "user-123",
-    "user_name": "John Doe",
-    "connections": 2,
-    "last_seen": "2025-01-15T10:30:00"
-  },
-  "online": true
-}
-```
-
-### Real-time Collection Updates
-
-All collection changes are automatically broadcast to connected clients.
-
-**Event Types:**
-- `record.created` - New record created
-- `record.updated` - Record updated
-- `record.deleted` - Record deleted
-- `collection.created` - New collection created
-- `collection.updated` - Collection schema updated
-- `collection.deleted` - Collection deleted
-- `user.joined` - User connected
-- `user.left` - User disconnected
-
-**Event Data Structure:**
-```json
-{
-  "type": "record.created",
-  "collection": "posts",
-  "record_id": "abc123",
-  "data": {
-    "id": "abc123",
-    "title": "New Post",
-    "content": "Post content...",
-    "created": "2025-01-15T10:30:00"
-  },
-  "timestamp": "2025-01-15T10:30:00"
-}
-```
-
-### Python Integration
-
-```python
-import httpx
-import json
-
-async def subscribe_to_realtime():
-    """Subscribe to real-time updates using Python."""
-    async with httpx.AsyncClient() as client:
-        url = 'http://localhost:8000/api/v1/realtime'
-
-        async with client.stream('GET', url) as response:
-            async for line in response.aiter_lines():
-                if line.startswith('data:'):
-                    data = json.loads(line[5:])
-                    event_type = data['type']
-                    collection = data['collection']
-                    record_data = data['data']
-
-                    print(f"Event: {event_type}")
-                    print(f"Collection: {collection}")
-                    print(f"Data: {record_data}")
-
-# With query filter
-async def subscribe_with_filter():
-    url = 'http://localhost:8000/api/v1/realtime?query=status=published'
-    # ... rest of implementation
-```
-
-### React Example
-
-```javascript
-import { useEffect, useState } from 'react';
-
-function useRealtime(collection, query = '') {
-  const [events, setEvents] = useState([]);
-  const [connected, setConnected] = useState(false);
-
-  useEffect(() => {
-    let url = `/api/v1/realtime`;
-    if (collection) {
-      url = `/api/v1/realtime/${collection}`;
-    }
-    if (query) {
-      url += `?query=${encodeURIComponent(query)}`;
-    }
-
-    const eventSource = new EventSource(url);
-
-    eventSource.addEventListener('connected', () => {
-      setConnected(true);
-    });
-
-    eventSource.addEventListener('record.created', (e) => {
-      const data = JSON.parse(e.data);
-      setEvents(prev => [...prev, data]);
-    });
-
-    eventSource.addEventListener('record.updated', (e) => {
-      const data = JSON.parse(e.data);
-      setEvents(prev => [...prev, data]);
-    });
-
-    eventSource.addEventListener('record.deleted', (e) => {
-      const data = JSON.parse(e.data);
-      setEvents(prev => [...prev, data]);
-    });
-
-    eventSource.onerror = () => {
-      setConnected(false);
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, [collection, query]);
-
-  return { events, connected };
-}
-
-// Usage
-function PostsList() {
-  const { events, connected } = useRealtime('posts', 'status=published');
-
-  return (
-    <div>
-      <div>Status: {connected ? 'Connected' : 'Disconnected'}</div>
-      <ul>
-        {events.map((event, i) => (
-          <li key={i}>{event.type}: {event.data.title}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-```
-
-### Vue.js Example
-
-```javascript
-<template>
-  <div>
-    <div>Status: {{ connected ? 'Connected' : 'Disconnected' }}</div>
-    <ul>
-      <li v-for="(event, index) in events" :key="index">
-        {{ event.type }}: {{ event.data.title }}
-      </li>
-    </ul>
-  </div>
-</template>
-
-<script>
-export default {
-  data() {
-    return {
-      events: [],
-      connected: false,
-      eventSource: null
-    }
-  },
-  mounted() {
-    this.connect();
-  },
-  beforeUnmount() {
-    if (this.eventSource) {
-      this.eventSource.close();
-    }
-  },
-  methods: {
-    connect() {
-      const url = '/api/v1/realtime/posts?query=status=published';
-      this.eventSource = new EventSource(url);
-
-      this.eventSource.addEventListener('connected', () => {
-        this.connected = true;
-      });
-
-      this.eventSource.addEventListener('record.created', (e) => {
-        const data = JSON.parse(e.data);
-        this.events.push(data);
-      });
-
-      this.eventSource.addEventListener('record.updated', (e) => {
-        const data = JSON.parse(e.data);
-        this.events.push(data);
-      });
-
-      this.eventSource.onerror = () => {
-        this.connected = false;
-      };
-    }
-  }
-}
-</script>
-```
-
-### Advanced Usage
-
-**Combining Presence and Live Queries:**
-```javascript
-// Track active users AND filter events
-const userId = 'current-user-id';
-const query = 'priority=high';
-const url = `/api/v1/realtime?user_id=${userId}&query=${encodeURIComponent(query)}`;
-
-const eventSource = new EventSource(url);
-
-// Handle both filtered records and presence
-eventSource.addEventListener('record.created', handleRecord);
-eventSource.addEventListener('user.joined', handleUserJoined);
-eventSource.addEventListener('user.left', handleUserLeft);
-```
-
-**Connection Management:**
-```javascript
-class RealtimeManager {
-  constructor(url) {
-    this.url = url;
-    this.eventSource = null;
-    this.reconnectDelay = 1000;
-    this.maxReconnectDelay = 30000;
-  }
-
-  connect() {
-    this.eventSource = new EventSource(this.url);
-
-    this.eventSource.addEventListener('connected', () => {
-      console.log('Connected');
-      this.reconnectDelay = 1000;
-    });
-
-    this.eventSource.onerror = () => {
-      console.log('Connection lost, reconnecting...');
-      this.reconnect();
-    };
-
-    // Add your event listeners here
-  }
-
-  reconnect() {
-    setTimeout(() => {
-      this.connect();
-      this.reconnectDelay = Math.min(
-        this.reconnectDelay * 2,
-        this.maxReconnectDelay
-      );
-    }, this.reconnectDelay);
-  }
-
-  disconnect() {
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
-    }
-  }
-}
-
-// Usage
-const manager = new RealtimeManager('/api/v1/realtime?user_id=123');
-manager.connect();
-```
-
-### Performance Considerations
-
-**Connection Limits:**
-- Each SSE connection is lightweight but persistent
-- Browsers typically limit 6 concurrent connections per domain
-- Consider using a single connection for multiple collections when possible
-
-**Best Practices:**
-1. **Use Query Filters**: Reduce unnecessary events by filtering at the source
-2. **Debounce UI Updates**: Don't update UI on every event if receiving high frequency
-3. **Connection Pooling**: Reuse connections across components when possible
-4. **Handle Disconnections**: Implement reconnection logic with exponential backoff
-5. **Clean Up**: Always close connections when components unmount
-
-**Example: Debounced Updates**
-```javascript
-let updateBuffer = [];
-let updateTimeout;
-
-eventSource.addEventListener('record.updated', (e) => {
-  const data = JSON.parse(e.data);
-  updateBuffer.push(data);
-
-  clearTimeout(updateTimeout);
-  updateTimeout = setTimeout(() => {
-    // Process all buffered updates at once
-    processUpdates(updateBuffer);
-    updateBuffer = [];
-  }, 500);
-});
-```
-
-### Security
-
-**Authentication:**
-Real-time endpoints respect the same authentication as REST APIs. Include tokens as query parameters:
-
-```javascript
-const token = 'your-auth-token';
-const eventSource = new EventSource(
-  `/api/v1/realtime?token=${token}&user_id=123`
+const token = localStorage.getItem("access_token");
+const ws = new WebSocket(
+  `ws://localhost:8000/api/v1/ws/realtime?token=${token}`
 );
+
+ws.onopen = () => {
+  // Subscribe once connected
+  ws.send(JSON.stringify({ action: "subscribe", collection: "posts" }));
+};
+
+ws.onmessage = (e) => {
+  const msg = JSON.parse(e.data);
+  switch (msg.type) {
+    case "event":
+      console.log("Realtime event:", msg.data);
+      break;
+    case "ping":
+      ws.send(JSON.stringify({ action: "pong" })); // keep the connection alive
+      break;
+  }
+};
+
+ws.onclose = () => {
+  // Reconnect with exponential backoff as needed
+};
 ```
 
-**Access Control:**
-Real-time events respect collection-level access control rules. Users only receive events for collections they have access to.
+### Notes
 
-### Troubleshooting
-
-**Connection won't establish:**
-- Check that the server is running
-- Verify firewall/proxy settings allow SSE connections
-- Some proxies buffer SSE; configure to pass through
-
-**Events not received:**
-- Verify you're listening to the correct event types
-- Check that records match your query filter
-- Ensure the collection name is correct
-
-**High CPU usage:**
-- Reduce number of active connections
-- Implement proper debouncing for UI updates
-- Use query filters to reduce event volume
-
-**Connection keeps dropping:**
-- Some networks have aggressive timeouts
-- Implement reconnection logic
-- Consider using a reverse proxy with keep-alive configured
-
-### Demo
-
-Visit the admin panel's Real-time page at `/admin/realtime` to see a live demo of all real-time features including:
-- Active users list (presence)
-- Live query filtering
-- Real-time events feed
-- Code examples
-
----
+- Each WebSocket connection is lightweight but persistent; reconnect with
+  backoff if it drops.
+- For multi-server deployments, enable Redis (`REDIS_ENABLED=true`) so events
+  fan out across all instances via pub/sub.
+- Some proxies buffer or close idle connections — configure them to allow
+  WebSocket upgrades and long-lived connections.
 
 ## Advanced Relations
 
@@ -3191,16 +2817,21 @@ FastCMS automatically:
 
 ```json
 {
-  "access_token": "eyJhbGc...",
-  "refresh_token": "eyJhbGc...",
-  "token_type": "bearer",
   "user": {
     "id": "user-uuid",
     "email": "user@gmail.com",
     "name": "John Doe",
     "verified": true,
     "oauth_provider": "google"
-  }
+  },
+  "token": {
+    "access_token": "eyJhbGc...",
+    "refresh_token": "eyJhbGc...",
+    "token_type": "bearer",
+    "expires_in": 86400
+  },
+  "message": null,
+  "requires_2fa": false
 }
 ```
 

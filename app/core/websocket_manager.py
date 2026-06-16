@@ -10,6 +10,7 @@ This module provides a production-ready WebSocket connection manager with:
 """
 
 import asyncio
+from app.utils.timeutils import utcnow
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Set
 from fastapi import WebSocket
@@ -33,8 +34,8 @@ class Connection:
         self.connection_id = connection_id
         self.user_id: Optional[str] = None
         self.authenticated: bool = False
-        self.connected_at: datetime = datetime.utcnow()
-        self.last_activity: datetime = datetime.utcnow()
+        self.connected_at: datetime = utcnow()
+        self.last_activity: datetime = utcnow()
 
         # Subscriptions: collection_name -> filter_dict (None means no filter)
         self.subscriptions: Dict[str, Optional[Dict[str, Any]]] = {}
@@ -88,11 +89,11 @@ class Connection:
 
     def update_activity(self) -> None:
         """Update the last activity timestamp."""
-        self.last_activity = datetime.utcnow()
+        self.last_activity = utcnow()
 
     def is_stale(self, timeout_seconds: int = HEARTBEAT_TIMEOUT) -> bool:
         """Check if the connection is stale (no activity for too long)."""
-        return datetime.utcnow() - self.last_activity > timedelta(seconds=timeout_seconds)
+        return utcnow() - self.last_activity > timedelta(seconds=timeout_seconds)
 
     def matches_event(self, collection: str, event_data: Dict[str, Any]) -> bool:
         """Check if an event matches this connection's subscriptions and filters."""
@@ -212,7 +213,7 @@ class ConnectionManager:
             "type": "connected",
             "data": {
                 "connection_id": connection_id,
-                "server_time": datetime.utcnow().isoformat(),
+                "server_time": utcnow().isoformat(),
             }
         })
 
@@ -373,7 +374,7 @@ class ConnectionManager:
                         await conn.send_json({
                             "type": "event",
                             "data": event_dict,
-                            "timestamp": datetime.utcnow().isoformat()
+                            "timestamp": utcnow().isoformat()
                         })
 
         except asyncio.CancelledError:
@@ -395,7 +396,7 @@ class ConnectionManager:
                     connections = list(self._connections.values())
 
                 for conn in connections:
-                    await conn.send_json({"type": "ping", "timestamp": datetime.utcnow().isoformat()})
+                    await conn.send_json({"type": "ping", "timestamp": utcnow().isoformat()})
 
             except asyncio.CancelledError:
                 break

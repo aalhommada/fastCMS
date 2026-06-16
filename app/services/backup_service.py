@@ -1,5 +1,6 @@
 """Service for database backup and restore operations."""
 import os
+from app.utils.timeutils import utcnow
 import shutil
 import zipfile
 from datetime import datetime
@@ -28,7 +29,7 @@ class BackupService:
         Returns:
             dict: Backup metadata including filename, size, and path
         """
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = utcnow().strftime("%Y%m%d_%H%M%S")
         backup_name = name or f"backup_{timestamp}"
         backup_filename = f"{backup_name}.zip"
         backup_path = self.backup_dir / backup_filename
@@ -49,7 +50,7 @@ class BackupService:
 
                 # Add metadata
                 metadata = {
-                    "created_at": datetime.utcnow().isoformat(),
+                    "created_at": utcnow().isoformat(),
                     "app_version": settings.APP_VERSION,
                     "backup_name": backup_name,
                 }
@@ -63,7 +64,7 @@ class BackupService:
                 "name": backup_name,
                 "size": backup_size,
                 "size_mb": round(backup_size / (1024 * 1024), 2),
-                "created": datetime.utcnow().isoformat(),
+                "created": utcnow().isoformat(),
                 "path": str(backup_path),
             }
 
@@ -148,7 +149,7 @@ class BackupService:
             marker_file = self.backup_dir / ".restore_pending"
             marker_data = {
                 "backup_filename": filename,
-                "requested_at": datetime.utcnow().isoformat(),
+                "requested_at": utcnow().isoformat(),
                 "staging_path": str(restore_staging),
             }
             marker_file.write_text(json.dumps(marker_data, indent=2))

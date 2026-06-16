@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] — 2026-05-11
+
+UX improvements and admin-page-routing fix.
+
+### Added
+
+- **`fastcms dev` auto-opens the browser** at `http://127.0.0.1:<port>/admin`
+  once `/health` responds. A health-poll loop runs in a background
+  thread so the browser opens at the right moment (not too early during
+  cold boot). Opt out with `--no-open`.
+- Package description updated to "AI-native Backend-as-a-Service built
+  with FastAPI" to reflect the product identity.
+
+### Fixed
+
+- **`/admin/plugins` page**: each plugin row's button used to be a
+  "Settings" link pointing to a JSON API endpoint, which rendered as
+  `{}` in the browser. Now shows an **Open** button only when the
+  plugin has a registered admin UI (e.g. AI Core → `/admin/ai`), and
+  displays a muted "No admin page" label otherwise. Backed by a new
+  `admin_pages` map passed to the template (plugin_id → URL).
+
+### Changed
+
+- Reframed copy across README and docs to lead with AI identity:
+  "AI-native Python BaaS — RAG, vector search, autonomous agents".
+  The lightweight-core / opt-in-plugins angle is preserved but now
+  framed as *how* AI is delivered, not a substitute for the AI
+  narrative.
+
 ## [0.1.5] — 2026-05-11
 
 Critical fix for users installing on Python 3.13+ / Starlette 1.0+.

@@ -1,5 +1,6 @@
 """Service for file upload, download, and management."""
 import uuid
+from app.utils.timeutils import utcnow
 import math
 from pathlib import Path
 from typing import Optional, BinaryIO
@@ -281,9 +282,8 @@ class FileService:
 
     def _get_storage_path(self, filename: str) -> str:
         """Generate storage path with date-based organization."""
-        from datetime import datetime
 
-        now = datetime.utcnow()
+        now = utcnow()
         year = now.strftime("%Y")
         month = now.strftime("%m")
         day = now.strftime("%d")

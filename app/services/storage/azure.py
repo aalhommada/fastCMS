@@ -12,6 +12,7 @@ OR
 """
 
 from io import BytesIO
+from app.utils.timeutils import utcnow
 from typing import BinaryIO, Optional
 
 try:
@@ -209,7 +210,7 @@ class AzureBlobStorage(BaseStorage):
             SAS URL
         """
         try:
-            from datetime import datetime, timedelta
+            from datetime import timedelta
             from azure.storage.blob import BlobSasPermissions, generate_blob_sas
 
             blob_client = self.container_client.get_blob_client(key)
@@ -221,7 +222,7 @@ class AzureBlobStorage(BaseStorage):
                 blob_name=key,
                 account_key=blob_client.credential.account_key,
                 permission=BlobSasPermissions(read=True),
-                expiry=datetime.utcnow() + timedelta(seconds=expires_in),
+                expiry=utcnow() + timedelta(seconds=expires_in),
             )
 
             return f"{blob_client.url}?{sas_token}"

@@ -12,7 +12,8 @@ from sqlalchemy import text
 from pydantic import BaseModel, Field
 import io
 
-from app.core.dependencies import require_auth, require_admin
+from app.core.dependencies import require_auth, require_admin, require_auth_context, UserContext
+from app.core.exceptions import ForbiddenException
 from app.db.session import get_db
 from app.schemas.collection import (
     CollectionCreate,
@@ -64,7 +65,7 @@ router = APIRouter()
 async def create_collection(
     data: CollectionCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(require_auth),
+    user: UserContext = Depends(require_auth_context),
 ) -> CollectionResponse:
     """
     Create a new collection.
@@ -72,11 +73,15 @@ async def create_collection(
     Args:
         data: Collection creation data
         db: Database session
-        user_id: Authenticated user ID
+        user: Authenticated user context
 
     Returns:
         Created collection
     """
+    # View collections execute an arbitrary view_query as raw SQL (CREATE VIEW ...),
+    # which can read any table. Restrict creating them to admins.
+    if data.type == "view" and user.role != "admin":
+        raise ForbiddenException("Only admins can create view collections")
     service = CollectionService(db)
     return await service.create_collection(data)
 
@@ -155,7 +160,7 @@ async def update_collection(
     collection_id: str,
     data: CollectionUpdate,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(require_auth),
+    user: UserContext = Depends(require_auth_context),
 ) -> CollectionResponse:
     """
     Update a collection.
@@ -164,11 +169,14 @@ async def update_collection(
         collection_id: Collection ID
         data: Update data
         db: Database session
-        user_id: Authenticated user ID
+        user: Authenticated user context
 
     Returns:
         Updated collection
     """
+    # Setting/changing a view_query runs raw SQL (CREATE VIEW ...). Admins only.
+    if data.view_query is not None and user.role != "admin":
+        raise ForbiddenException("Only admins can set a view query")
     service = CollectionService(db)
     return await service.update_collection(collection_id, data)
 

@@ -1,7 +1,7 @@
 """Enhanced health check endpoint"""
 import os
+from app.utils.timeutils import utcnow
 import psutil
-from datetime import datetime
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -29,7 +29,7 @@ async def detailed_health_check(db: AsyncSession = Depends(get_db)):
     """Detailed health check with system info"""
     health = {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utcnow().isoformat(),
         "service": {
             "name": settings.APP_NAME,
             "version": settings.APP_VERSION,
@@ -57,7 +57,7 @@ async def detailed_health_check(db: AsyncSession = Depends(get_db)):
             "memory_percent": psutil.virtual_memory().percent,
             "disk_percent": psutil.disk_usage("/").percent,
         }
-    except:
+    except Exception:
         health["system"] = {"error": "Unable to get system metrics"}
 
     # Storage
@@ -73,7 +73,7 @@ async def detailed_health_check(db: AsyncSession = Depends(get_db)):
                 "data_dir_size_mb": round(total_size / 1024 / 1024, 2),
                 "type": settings.STORAGE_TYPE if hasattr(settings, "STORAGE_TYPE") else "local",
             }
-    except:
+    except Exception:
         health["storage"] = {"error": "Unable to get storage info"}
 
     return health

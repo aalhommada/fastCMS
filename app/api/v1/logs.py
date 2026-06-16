@@ -1,6 +1,7 @@
 """Logs API endpoints"""
 from typing import Optional
-from datetime import datetime, timedelta
+from app.utils.timeutils import utcnow
+from datetime import timedelta
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
@@ -23,7 +24,7 @@ async def get_logs(
     """Get request logs (admin only)"""
     service = LogService(db)
 
-    from_date = datetime.utcnow() - timedelta(days=days)
+    from_date = utcnow() - timedelta(days=days)
 
     logs = await service.get_logs(
         limit=limit,
@@ -60,7 +61,7 @@ async def get_statistics(
 ):
     """Get log statistics (admin only)"""
     service = LogService(db)
-    from_date = datetime.utcnow() - timedelta(days=days)
+    from_date = utcnow() - timedelta(days=days)
 
     stats = await service.get_statistics(from_date=from_date)
     return stats
